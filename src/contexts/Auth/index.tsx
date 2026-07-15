@@ -9,7 +9,7 @@ import {
   AuthToken,
 } from "./interfaces"
 import { useRouter } from "next/navigation"
-import { Login, Register } from "../../api/auth"
+import { Register } from "../../api/auth"
 import { supabase } from "@/lib/supabase/config"
 import { toast } from "sonner"
 import SUPA_TABLES from "../supa_tables"
@@ -81,14 +81,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   async function signIn({ email, password }: SignInData): Promise<any> {
     try {
       setIsLoading(true)
-      const result = await Login(email, password)
 
-      if (!result.success || result.error) throw result.error
+      // Autentica no Supabase Auth (auth.users) para obter uma sessão real,
+      // necessária para que o RLS (auth_company_id()) funcione nas consultas seguintes.
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.signInWithPassword({ email, password })
+
+      if (sessionError || !sessionData?.user) throw sessionError
+
+      // Resolve o tenant (company_id) do usuário autenticado via myia_users,
+      // que referencia auth.users(id) no novo schema multi-tenant.
+      const { data: myiaUser, error: myiaUserError } = await supabase
+        .from("myia_users")
+        .select("company_id, role")
+        .eq("id", sessionData.user.id)
+        .single()
+
+      if (myiaUserError || !myiaUser) {
+        await supabase.auth.signOut()
+        throw myiaUserError || new Error("Usuário sem empresa vinculada")
+      }
 
       const authData = {
-        company_id: result?.user?.company_id,
-        user_id: result?.user?.id,
-        hashed_password: result?.user?.hashed_password,
+        company_id: myiaUser.company_id,
+        user_id: sessionData.user.id,
+        hashed_password: "",
       }
 
       // Salvar nos cookies com configurações de segurança aprimoradas
@@ -203,7 +220,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       // Capturar o company_id antes de limpar os dados
       const companyId = user?.company_id
-      
+
+      // Encerrar a sessão real do Supabase Auth (limpa o JWT usado pelo RLS)
+      await supabase.auth.signOut()
+
       // Remover cookie de autenticação de forma mais segura
       destroyCookie(null, "authData", {
         path: "/",
