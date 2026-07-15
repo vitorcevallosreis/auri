@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:new": "supabase migration new",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset --linked",
+    "db:test": "node scripts/db-test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
@@ -81,6 +85,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.1.6",
     "patch-package": "^8.0.0",
+    "pg": "^8.22.0",
     "postcss": "^8",
     "postinstall-postinstall": "^2.1.0",
     "supabase": "^2.109.1",
