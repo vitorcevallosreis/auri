@@ -6,7 +6,15 @@
 
 **Architecture:** Reconstruímos o schema (~20 tabelas `myia_*`) como migrations SQL versionadas em `supabase/migrations/`. Testamos localmente com a Supabase CLI (`supabase db reset` numa stack local em Docker), aplicando domínio por domínio. Tenancy multi-tenant via tabela `myia_users` (liga `auth.users` → `company_id`) + função `auth_company_id()` usada em todas as políticas de RLS. Depois criamos o projeto na nuvem, damos `db push`, religamos `.env.local` e fazemos smoke test do painel.
 
-**Tech Stack:** Supabase (Postgres 15 + CLI), Docker, Next.js 15.1.6, `@supabase/supabase-js`, `@supabase/auth-helpers-nextjs`.
+**Tech Stack:** Supabase (Postgres 15 + CLI via `npx supabase`), Next.js 15.1.6, `@supabase/supabase-js`, `@supabase/auth-helpers-nextjs`.
+
+> **Execution note (Opção B — projeto dev na nuvem, decidida em 2026-07-15):** esta
+> máquina não tem Docker nem Homebrew. A CLI foi instalada como devDependency
+> (`npm i -D supabase`, use `npx supabase ...`). Não usamos a stack local. Em vez disso,
+> linkamos um **projeto Supabase dev descartável na nuvem** e:
+> - onde o plano diz `supabase db reset`, use **`npx supabase db reset --linked`** (destrutivo — só no projeto dev);
+> - onde o plano diz `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres"`, use **`psql "$SUPABASE_DB_URL"`** (connection string direta do projeto dev, exportada no shell).
+> A Task 0 abaixo é substituída pela variante de nuvem (login + link + migrations dir), executada pelo controlador.
 
 ## Global Constraints
 
