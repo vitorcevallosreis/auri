@@ -37,7 +37,7 @@ class RealtimeService {
         "postgres_changes",
         {
           event: "*",
-          schema: "nexa",
+          schema: "public",
           table: tableName,
         },
         (payload: RealtimePayload<T>) => {

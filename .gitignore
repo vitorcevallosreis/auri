@@ -42,3 +42,10 @@ _env
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase local artifacts
+supabase/.branches
+supabase/.temp
+
+# subagent-driven-development scratch
+.superpowers/

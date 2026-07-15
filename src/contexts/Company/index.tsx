@@ -993,7 +993,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Evento INSERT
     channel.on('postgres_changes', {
       event: 'INSERT',
-      schema: 'nexa',
+      schema: 'public',
       table: SUPA_TABLES.table_company_policies,
       filter: `company_id=eq.${user.company_id}`
     }, (payload) => handlePolicyChange(payload, 'Nova'))
@@ -1001,7 +1001,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Evento UPDATE
     channel.on('postgres_changes', {
       event: 'UPDATE',
-      schema: 'nexa',
+      schema: 'public',
       table: SUPA_TABLES.table_company_policies,
       filter: `company_id=eq.${user.company_id}`
     }, (payload) => handlePolicyChange(payload, 'Atualizada'))
@@ -1009,7 +1009,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Evento DELETE
     channel.on('postgres_changes', {
       event: 'DELETE',
-      schema: 'nexa',
+      schema: 'public',
       table: SUPA_TABLES.table_company_policies,
       filter: `company_id=eq.${user.company_id}`
     }, (payload) => handlePolicyChange(payload, 'Removida'))
@@ -1044,7 +1044,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Evento INSERT
     channel.on('postgres_changes', {
       event: 'INSERT',
-      schema: 'nexa',
+      schema: 'public',
       table: SUPA_TABLES.table_company_payment_methods,
       filter: `company_id=eq.${user.company_id}`
     }, (payload) => handlePaymentMethodChange(payload, 'Nova'))
@@ -1052,7 +1052,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Evento UPDATE
     channel.on('postgres_changes', {
       event: 'UPDATE',
-      schema: 'nexa',
+      schema: 'public',
       table: SUPA_TABLES.table_company_payment_methods,
       filter: `company_id=eq.${user.company_id}`
     }, (payload) => handlePaymentMethodChange(payload, 'Atualizada'))
@@ -1060,7 +1060,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Evento DELETE
     channel.on('postgres_changes', {
       event: 'DELETE',
-      schema: 'nexa',
+      schema: 'public',
       table: SUPA_TABLES.table_company_payment_methods,
       filter: `company_id=eq.${user.company_id}`
     }, (payload) => handlePaymentMethodChange(payload, 'Removida'))

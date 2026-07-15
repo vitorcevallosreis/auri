@@ -6,7 +6,21 @@
 
 **Architecture:** Reconstruímos o schema (~20 tabelas `myia_*`) como migrations SQL versionadas em `supabase/migrations/`. Testamos localmente com a Supabase CLI (`supabase db reset` numa stack local em Docker), aplicando domínio por domínio. Tenancy multi-tenant via tabela `myia_users` (liga `auth.users` → `company_id`) + função `auth_company_id()` usada em todas as políticas de RLS. Depois criamos o projeto na nuvem, damos `db push`, religamos `.env.local` e fazemos smoke test do painel.
 
-**Tech Stack:** Supabase (Postgres 15 + CLI), Docker, Next.js 15.1.6, `@supabase/supabase-js`, `@supabase/auth-helpers-nextjs`.
+**Tech Stack:** Supabase (Postgres 15 + CLI via `npx supabase`), Next.js 15.1.6, `@supabase/supabase-js`, `@supabase/auth-helpers-nextjs`.
+
+> **Execution note (Opção B — projeto na nuvem, montada em 2026-07-15):** esta máquina
+> não tem Docker, Homebrew nem `psql`. A CLI foi instalada como devDependency
+> (`npm i -D supabase`, use `npx supabase ...`) e a lib `pg` como test-runner. Não há
+> stack local. Projeto alvo: **`myia-app`** (ref `ffkicwhchrwvavkhfqol`, org `Auri`,
+> região `sa-east-1`) — já criado e linkado. Substituições ao aplicar cada tarefa:
+> - **Aplicar migration:** onde o plano diz `supabase db reset`, use **`npx supabase db push`**
+>   (aplica migrations novas no projeto linkado). Use `npx supabase db reset --linked`
+>   apenas quando precisar limpar + reaplicar tudo + seed (Task 8).
+> - **Rodar teste:** onde o plano diz `psql "...127.0.0.1:54322..." -f X.test.sql`, use
+>   **`node scripts/db-test.mjs X.test.sql`** (conecta via `SUPABASE_DB_URL` em
+>   `.env.supabase-dev`, gitignored; roda em transação com rollback; "PASS" se zero linhas).
+> - Conexão é **direta** (`db.<ref>.supabase.co:5432`, IPv6) — o pooler não resolveu nesta rede.
+> - Task 0 abaixo foi executada pelo controlador (login, projeto, link, dirs, runner, scripts).
 
 ## Global Constraints
 

@@ -1,0 +1,110 @@
+# Handoff — myia_app (Auri Software)
+
+> **Para a próxima sessão:** leia este arquivo primeiro. Ele resume tudo que foi feito e
+> o que vem a seguir, para você continuar sem re-derivar contexto. Atualizado: 2026-07-15.
+
+---
+
+## TL;DR
+
+**myia_app** é um SaaS multi-tenant de **atendimento por IA no WhatsApp + agendamento** para
+clínicas (Next.js 15 + Supabase + MinIO). Estava **inativo há ~1 ano**; estamos relançando numa
+stack que controlamos e adicionando funcionalidades.
+
+**Plano 1 (migração para Supabase próprio + religar painel) está COMPLETO e validado.** Código no
+GitHub, branch aberta para PR. Próximo é o Plano 2 (WhatsApp) — ver Roadmap.
+
+---
+
+## Estado do repositório
+
+- **GitHub:** `https://github.com/vitorcevallosreis/auri` (privado).
+- **Branch de trabalho:** `feat/plan1-supabase-migration` (base `main`). PR ainda **não aberto**:
+  `https://github.com/vitorcevallosreis/auri/pull/new/feat/plan1-supabase-migration`.
+- Dir local: `/Users/vitorcreis/CascadeProjects/Auri Software/myia_app-develop`.
+- `git status` limpo, local == remote. `gh` CLI **não** instalado (PR foi feito via web).
+
+## Projeto Supabase (nosso)
+
+- **Nome:** `myia-app` · **ref:** `ffkicwhchrwvavkhfqol` · **região:** `sa-east-1` (São Paulo, por
+  LGPD/latência) · org `Auri` (`nsbzdlsiccvnrtecehtu`). Postgres 17.
+- URL: `https://ffkicwhchrwvavkhfqol.supabase.co`.
+- **Credenciais (gitignored, NÃO versionar):**
+  - `.env.supabase-dev` — senha do DB + `SUPABASE_DB_URL` (conexão direta IPv6 `db.<ref>.supabase.co:5432`).
+  - `.env.local` — `NEXT_PUBLIC_SUPABASE_URL`, anon key, `SUPABASE_SERVICE_ROLE_KEY`, storage URL.
+- 🔐 **AÇÃO PENDENTE:** o Personal Access Token usado no `supabase login` vazou no histórico da
+  sessão anterior. **Rotacionar** em https://supabase.com/dashboard/account/tokens.
+
+## Ambiente / gotchas (importante)
+
+Esta máquina **não tem Docker, Homebrew nem psql**. Por isso:
+- Supabase CLI é **devDependency**: use `npx supabase ...` (nunca `supabase` global).
+- Não usamos stack local — trabalhamos direto contra o **projeto na nuvem** (linkado).
+- Runners SQL próprios (a lib `pg` é devDep):
+  - `node scripts/db-test.mjs <arquivo.test.sql>` — roda asserções em transação com rollback;
+    **PASS = zero linhas / exit 0**. Auto-carrega `SUPABASE_DB_URL` de `.env.supabase-dev`.
+  - `node scripts/db-apply.mjs <arquivo.sql>` — aplica com COMMIT (usado no seed).
+  - `node scripts/seed-auth.mjs` — cria usuários de LOGIN via Admin API (ver abaixo).
+- **Aplicar migrations:** `set -a; source .env.supabase-dev; set +a` e
+  `npx supabase db push -p "$SUPABASE_DEV_DB_PASSWORD"`.
+- **Rodar o painel:** `npm run dev` (Next 15 + Turbopack, porta 3000).
+
+## O que o Plano 1 entregou
+
+- **Schema completo** reconstruído dos interfaces TS em `supabase/migrations/0001..0010`:
+  tenancy, assistants, mensageria, catálogo, config da empresa, agendamento, **RLS multi-tenant**,
+  fix `appointments.company_id NOT NULL`, **grants explícitos**, **publication de realtime**.
+  Todas as ~20 tabelas usam prefixo `myia_`; isolamento por `company_id = auth_company_id()`.
+- **RLS provado**: `supabase/tests/0009_isolation.test.sql` (controle positivo + negativo).
+- **Painel religado**: `src/contexts/Auth/index.tsx` agora usa **Supabase Auth real**
+  (`signInWithPassword`) e resolve `company_id` de `myia_users`. Fix crítico: cliente Supabase e
+  subscriptions realtime foram de `schema: 'nexa'` → `'public'` (`src/lib/supabase/*`,
+  `src/contexts/Company/index.tsx`). `src/database/types.ts` gerado (resolve import pendurado).
+- **Validado ponta a ponta**: login real + leitura/escrita com RLS retornando só a própria clínica.
+- **10/10 testes SQL passam** (`for t in supabase/tests/*.test.sql; do node scripts/db-test.mjs "$t"; done`).
+
+### Usuários de teste
+- **Login (via Admin API, senha `senha123`):** `clinica.a@teste.dev` → empresa A
+  (`aaaaaaaa-...`), `clinica.b@teste.dev` → empresa B (`bbbbbbbb-...`).
+- **Só para o teste de isolamento SQL (não logam):** `iso-a@internal.test` / `iso-b@internal.test`
+  (ids fixos `11111111-...`/`22222222-...`). Motivo: `auth.users` inserido por SQL cru não cria
+  `auth.identities`, então o GoTrue falha o login ("Database error querying schema"). **Sempre criar
+  usuário de login via Admin API, nunca por INSERT em auth.users.**
+
+## Follow-ups / issues conhecidos (NÃO feitos)
+
+1. **`signUp`/auto-cadastro quebrado** (Important, fora do escopo do P1): `src/api/auth.ts`
+   (`Register`) e `signUp` apontam pro schema antigo (colunas inexistentes; insert anon em
+   `myia_companies` barrado por RLS, falha silenciosa). Precisa de **RPC SECURITY DEFINER de
+   onboarding** que crie empresa + `myia_users` keyed no `auth.users.id`. Código morto p/ limpar:
+   `Login`/`RefreshToken` em `auth.ts`, `src/api/auth_fixed.ts`, `auth_updated.ts`.
+2. **Storage** (upload de imagem) não migrado — `MINIO_*`/storage ainda apontam para o ambiente
+   antigo; buckets do Supabase novo não criados.
+3. `.env.local` ainda tem valores antigos de MinIO/webhook/mapbox (placeholders).
+4. Minors aceitos no review final (ver `.superpowers/sdd/` reports): `create policy` não idempotente;
+   `updated_at` sem trigger (app seta manual); appointments não valida cross-tenant de
+   professional/service; `%1$s` vs `%I` no format do RLS.
+
+## Roadmap (cada um = ciclo spec → plano → implementação)
+
+- **Plano 2 — Evolution API self-hosted + ingress WhatsApp** (o gateway antigo se perdeu).
+- **Plano 3 — Agent Service (Claude Agent SDK)**: o "cérebro" do WhatsApp que substitui os fluxos
+  n8n perdidos (agendar/consultar/FAQ/handoff/follow-ups como tools; personalidade vem da config do
+  assistente no banco). **Nota:** Agent SDK/serviço em produção — NÃO os subagentes do Claude Code.
+- Depois: backend financeiro (split payment + conciliação fiscal); prontuário por IA (com
+  consentimento); plataforma de dados **RWE anonimizada/consentida** (NÃO vender dado identificável —
+  LGPD art. 11); redesign UI/UX minimalista.
+
+## Documentos de referência
+
+- Spec: `docs/superpowers/specs/2026-07-15-foundation-relaunch-design.md`
+- Plano 1: `docs/superpowers/plans/2026-07-15-plano1-migracao-supabase.md`
+- Ledger de progresso e reports dos subagentes: `.superpowers/sdd/` (gitignored)
+- Memória persistente: `~/.claude/projects/-Users-vitorcreis-CascadeProjects-Auri-Software/memory/`
+
+## Como continuar (checklist p/ a próxima sessão)
+
+1. `cd` no projeto; `git checkout feat/plan1-supabase-migration` (ou já mergeado? checar).
+2. Confirmar que os testes passam: `set -a; source .env.supabase-dev; set +a; for t in supabase/tests/*.test.sql; do node scripts/db-test.mjs "$t"; done`.
+3. Se for continuar o produto: começar o **Plano 2** via brainstorming (o usuário gosta do fluxo
+   spec → plano → subagent-driven que usamos no Plano 1).

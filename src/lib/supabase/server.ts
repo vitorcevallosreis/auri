@@ -14,6 +14,6 @@ export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey, 
     autoRefreshToken: false,
   },
   db: {
-    schema: "nexa",
+    schema: "public",
   },
 })
