@@ -1,10 +1,13 @@
--- Seed de desenvolvimento — 2 empresas isoladas, com usuários logáveis (senha: senha123).
+-- Seed de desenvolvimento — 2 empresas isoladas.
 -- Idempotente (on conflict do nothing). Aplicar com: node scripts/db-apply.mjs supabase/seed.sql
--- IDs fixos para que os testes de isolamento possam referenciá-los.
+-- IDs fixos para que o teste de isolamento (0009) possa referenciá-los.
+-- ATENÇÃO: estes usuários (auth.users inseridos via SQL) são APENAS para o teste de
+-- isolamento SQL — NÃO logam via GoTrue (falta auth.identities). Os usuários de LOGIN
+-- do painel são criados via Admin API em scripts/seed-auth.mjs, com emails clinica.*.
 
 -- ===== Empresa A =====
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, aud, role, instance_id)
-values ('11111111-1111-1111-1111-111111111111', 'clinica.a@teste.dev',
+values ('11111111-1111-1111-1111-111111111111', 'iso-a@internal.test',
         crypt('senha123', gen_salt('bf')), now(), 'authenticated', 'authenticated',
         '00000000-0000-0000-0000-000000000000')
 on conflict (id) do nothing;
@@ -27,7 +30,7 @@ on conflict (id) do nothing;
 
 -- ===== Empresa B =====
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, aud, role, instance_id)
-values ('22222222-2222-2222-2222-222222222222', 'clinica.b@teste.dev',
+values ('22222222-2222-2222-2222-222222222222', 'iso-b@internal.test',
         crypt('senha123', gen_salt('bf')), now(), 'authenticated', 'authenticated',
         '00000000-0000-0000-0000-000000000000')
 on conflict (id) do nothing;
