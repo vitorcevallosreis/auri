@@ -31,11 +31,18 @@ if (!url) {
   process.exit(2);
 }
 
-const sql = readFileSync(file, "utf8");
+// Remove comentários de linha (-- ... até o fim da linha) ANTES de dividir por ';',
+// senão um statement precedido por comentário na mesma "chunk" seria descartado
+// e a asserção silenciosamente ignorada. (Os arquivos .test.sql não usam '--'
+// dentro de literais de string, então isso é seguro para eles.)
+const sql = readFileSync(file, "utf8")
+  .split("\n")
+  .map((line) => line.replace(/--.*$/, ""))
+  .join("\n");
 const statements = sql
   .split(";")
   .map((s) => s.trim())
-  .filter((s) => s.length > 0 && !s.startsWith("--"));
+  .filter((s) => s.length > 0);
 
 const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
 
