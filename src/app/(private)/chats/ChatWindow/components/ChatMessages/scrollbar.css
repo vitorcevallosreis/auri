@@ -1,0 +1,39 @@
+/* Estilos personalizados para a barra de rolagem do chat */
+
+/* Firefox */
+.chat-scrollbar {
+  scrollbar-width: auto !important;
+  scrollbar-color: #3b82f6 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Chrome, Edge, Safari */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-radius: 8px !important;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #3b82f6 !important;
+  border-radius: 8px !important;
+  border: 3px solid transparent !important;
+  background-clip: content-box !important;
+  min-height: 40px !important;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #2563eb !important;
+}
+
+/* Tema escuro */
+.dark .chat-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #60a5fa !important;
+}
+
+.dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #93c5fd !important;
+}
