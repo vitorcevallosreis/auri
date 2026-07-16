@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase/server"
+import { getAuthedCompanyId, assistantCompanyId } from "@/lib/auth/tenant"
 
 // Rota server-only de gestão de instância do Evolution API (Plano 2 — P2.5).
 // Substitui o antigo webhook n8n `gerenciar-channel`. Toda a orquestração da
@@ -74,10 +75,30 @@ async function fetchChannel(channelId: string): Promise<ChannelRow | null> {
   return (data as ChannelRow) ?? null
 }
 
+// Busca o canal SOMENTE se ele pertencer ao tenant do chamador (via assistant).
+// Retorna null quando não existe OU não é do tenant (não vazamos a existência).
+async function fetchOwnedChannel(
+  channelId: string,
+  callerCompanyId: string
+): Promise<ChannelRow | null> {
+  const channel = await fetchChannel(channelId)
+  if (!channel) return null
+  const owner = await assistantCompanyId(channel.assistant_id)
+  if (!owner || owner !== callerCompanyId) return null
+  return channel
+}
+
+// Remove segredos de instância (token/urlapi) antes de devolver ao browser.
+function sanitizeChannel(ch: ChannelRow | null): Omit<ChannelRow, "token" | "urlapi"> | null {
+  if (!ch) return null
+  const { token: _t, urlapi: _u, ...safe } = ch
+  return safe
+}
+
 // ---------------------------------------------------------------------------
 // create
 // ---------------------------------------------------------------------------
-async function handleCreate(body: InstanceRequestBody) {
+async function handleCreate(body: InstanceRequestBody, callerCompanyId: string) {
   const { baseUrl, globalKey, webhookSecret, appUrl } = envConfig()
   if (!baseUrl || !globalKey) {
     return NextResponse.json(
@@ -87,6 +108,11 @@ async function handleCreate(body: InstanceRequestBody) {
   }
   if (!body.assistantId || !body.nome) {
     return NextResponse.json({ ok: false, error: "assistantId e nome são obrigatórios." }, { status: 400 })
+  }
+  // Ownership: o assistant alvo tem que ser do tenant do chamador.
+  const assistantOwner = await assistantCompanyId(body.assistantId)
+  if (!assistantOwner || assistantOwner !== callerCompanyId) {
+    return NextResponse.json({ ok: false, error: "Assistant não encontrado." }, { status: 404 })
   }
 
   // (1) Cria a linha do canal primeiro — precisamos do id para nomear a instância.
@@ -175,7 +201,7 @@ async function handleCreate(body: InstanceRequestBody) {
   return NextResponse.json(
     {
       ok: !evoError,
-      channel: finalChannel,
+      channel: sanitizeChannel(finalChannel),
       qrcode64,
       status: finalChannel.status,
       error: evoError,
@@ -187,11 +213,11 @@ async function handleCreate(body: InstanceRequestBody) {
 // ---------------------------------------------------------------------------
 // connect (gera/renova QR ou pairing code)
 // ---------------------------------------------------------------------------
-async function handleConnect(body: InstanceRequestBody) {
+async function handleConnect(body: InstanceRequestBody, callerCompanyId: string) {
   if (!body.channelId) {
     return NextResponse.json({ ok: false, error: "channelId é obrigatório." }, { status: 400 })
   }
-  const channel = await fetchChannel(body.channelId)
+  const channel = await fetchOwnedChannel(body.channelId, callerCompanyId)
   if (!channel) {
     return NextResponse.json({ ok: false, error: "Canal não encontrado." }, { status: 404 })
   }
@@ -235,7 +261,7 @@ async function handleConnect(body: InstanceRequestBody) {
   return NextResponse.json(
     {
       ok: !evoError,
-      channel: (updated as ChannelRow) ?? channel,
+      channel: sanitizeChannel((updated as ChannelRow) ?? channel),
       qrcode64,
       pairing_code: pairingCode,
       status: "created",
@@ -248,11 +274,11 @@ async function handleConnect(body: InstanceRequestBody) {
 // ---------------------------------------------------------------------------
 // logout (desconecta o número, mantém a instância)
 // ---------------------------------------------------------------------------
-async function handleLogout(body: InstanceRequestBody) {
+async function handleLogout(body: InstanceRequestBody, callerCompanyId: string) {
   if (!body.channelId) {
     return NextResponse.json({ ok: false, error: "channelId é obrigatório." }, { status: 400 })
   }
-  const channel = await fetchChannel(body.channelId)
+  const channel = await fetchOwnedChannel(body.channelId, callerCompanyId)
   if (!channel) {
     return NextResponse.json({ ok: false, error: "Canal não encontrado." }, { status: 404 })
   }
@@ -286,7 +312,7 @@ async function handleLogout(body: InstanceRequestBody) {
     .single()
 
   return NextResponse.json(
-    { ok: !evoError, channel: (updated as ChannelRow) ?? channel, status: "close", error: evoError },
+    { ok: !evoError, channel: sanitizeChannel((updated as ChannelRow) ?? channel), status: "close", error: evoError },
     { status: 200 }
   )
 }
@@ -294,13 +320,13 @@ async function handleLogout(body: InstanceRequestBody) {
 // ---------------------------------------------------------------------------
 // delete (remove a instância no Evolution e a linha do canal)
 // ---------------------------------------------------------------------------
-async function handleDelete(body: InstanceRequestBody) {
+async function handleDelete(body: InstanceRequestBody, callerCompanyId: string) {
   if (!body.channelId) {
     return NextResponse.json({ ok: false, error: "channelId é obrigatório." }, { status: 400 })
   }
-  const channel = await fetchChannel(body.channelId)
+  const channel = await fetchOwnedChannel(body.channelId, callerCompanyId)
   if (!channel) {
-    // Já não existe: idempotente.
+    // Inexistente OU de outro tenant: idempotente e sem vazar existência.
     return NextResponse.json({ ok: true, deleted: true }, { status: 200 })
   }
   const baseUrl = channel.urlapi || process.env.EVOLUTION_API_URL
@@ -337,6 +363,13 @@ async function handleDelete(body: InstanceRequestBody) {
 
 export async function POST(req: Request) {
   try {
+    // Autenticação obrigatória: identidade vem do JWT do Supabase (Bearer), não
+    // do cookie. Sem isso, esta rota (service role) seria um IDOR cross-tenant.
+    const callerCompanyId = await getAuthedCompanyId(req)
+    if (!callerCompanyId) {
+      return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 })
+    }
+
     const body = (await req.json().catch(() => null)) as InstanceRequestBody | null
     if (!body || !body.action) {
       return NextResponse.json({ ok: false, error: "action é obrigatório." }, { status: 400 })
@@ -344,13 +377,13 @@ export async function POST(req: Request) {
 
     switch (body.action) {
       case "create":
-        return await handleCreate(body)
+        return await handleCreate(body, callerCompanyId)
       case "connect":
-        return await handleConnect(body)
+        return await handleConnect(body, callerCompanyId)
       case "logout":
-        return await handleLogout(body)
+        return await handleLogout(body, callerCompanyId)
       case "delete":
-        return await handleDelete(body)
+        return await handleDelete(body, callerCompanyId)
       default:
         return NextResponse.json({ ok: false, error: `action inválida: ${body.action}` }, { status: 400 })
     }

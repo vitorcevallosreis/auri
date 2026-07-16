@@ -1,4 +1,5 @@
 import { Channel } from "@/contexts/Assistants/interfaces";
+import { supabase } from "@/lib/supabase/config";
 
 // Cliente fino das rotas Next de gestão de instância do Evolution (Plano 2 — P2.5).
 // Substitui o antigo POST para o webhook n8n `gerenciar-channel`. Toda a lógica
@@ -26,9 +27,17 @@ export class ChannelService {
     action: InstanceAction,
     payload: Record<string, unknown>
   ): Promise<InstanceResponse> {
+    // A rota /api/whatsapp/instance é server-only e opera via service role, então
+    // exige o JWT do Supabase para autenticar/escopar o tenant (o middleware não
+    // protege /api/*). Enviamos o access_token da sessão como Bearer.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
     const response = await fetch(INSTANCE_ROUTE, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ action, ...payload }),
     });
 
