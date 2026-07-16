@@ -42,20 +42,23 @@ inbox). **Escopo = só o gateway; a IA é o Plano 3.** Docs: `docs/superpowers/s
   inexistente → agora resolve por `instanceWpp = chat.instance_id`), status SENT/FAILED; mídia = TODO
   fase 2. Commit `ec41762`.
 - **P2.6** runbook de deploy do VPS: `docs/deploy/evolution-vps.md` (compose, nginx+TLS, webhook, backups). Commit `1df5d3e`.
+- **P2.5** gestão de instância + religar UI de Channels: rota `src/app/api/whatsapp/instance/route.ts`
+  (create/connect/logout/delete, API key GLOBAL server-only, persiste em `myia_channels`), `ChannelService`
+  reescrito (n8n → rotas Next), UI `Channels`/context `Assistants` religados (createChannel devolve o canal
+  → abre modal de QR; fixes de guardas de logout/delete). **Build limpo.** Commit `7037973`.
+  ⚠️ Runtime contra o Evolution NÃO testado (precisa do VPS). Ponto de atenção a validar ao vivo: o
+  envelope `webhook` embutido no `/instance/create` (usa `byEvents/base64`) pode precisar de ajuste.
 
 **PENDENTE:**
-- **P2.5 (codável, NÃO feito — o agente atingiu o limite de uso da conta a meio caminho):** rotas
-  `src/app/api/whatsapp/instance/*` (create/connect/logout/delete usando a API key GLOBAL do Evolution
-  server-side, persistindo em `myia_channels`), reescrever `src/services/ChannelService.ts` (n8n → rotas
-  Next) e religar a UI `assistants/[assistant_id]/Channels/{model.ts,view.tsx}` (QR via `qrcode64`/status).
 - **P2.7–P2.9 (precisa do VPS):** provisionar o VPS (🔸confirmar **Contabo SP** vs **Hetzner** — a spec
   recomenda Contabo SP por LGPD, alinhado ao Supabase em sa-east-1), subir o Evolution via o runbook,
   setar `EVOLUTION_API_*` reais, criar instância + parear QR, teste ponta-a-ponta ao vivo.
 
 **Como o Plano 2 foi tocado:** sessão orquestrada — o maestro fez merge/spec/plano/integração/verificação;
-Agent 1 fez review do Plano 1, build-check, e a implementação P2.0–P2.4; Agent 2 fez a pesquisa do
-Evolution e o runbook. Artefatos de trabalho da noite (não versionados) em `../.night-work/` (research,
-review, reverse-engineering, drafts).
+Agent 1 fez review do Plano 1, build-check, e a implementação P2.0–P2.4 (parou no limite de uso; o
+maestro finalizou/commitou o P2.4); Agent 2 fez a pesquisa do Evolution, o runbook, e o P2.5. Artefatos
+de trabalho da noite (não versionados) em `../.night-work/` (research, review, reverse-engineering, drafts).
+**Só falta a fase live (VPS)** para o Plano 2 rodar ponta a ponta.
 
 ---
 
