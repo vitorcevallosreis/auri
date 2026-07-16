@@ -15,6 +15,7 @@ import { AxiosHttpClientAdapter } from "@/lib/webhooks/api"
 import { get_midia_type } from "./utils"
 import { v4 as uuidv4 } from "uuid"
 import { messageService } from "@/services/MessageService"
+import { authedFetch } from "@/lib/api/authedFetch"
 
 export const MessagesContext = createContext({} as MessagesType)
 
@@ -171,7 +172,7 @@ export function MessagesProvider({ children }: MessagesProps) {
     // Ativar indicador de digitação
     sendTypingIndicator(chat_id, true)
     try {
-      await fetch('/api/messages/send', {
+      await authedFetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -201,7 +202,7 @@ export function MessagesProvider({ children }: MessagesProps) {
     }
 
     try {
-      await fetch('/api/messages/send', {
+      await authedFetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,7 +283,7 @@ export function MessagesProvider({ children }: MessagesProps) {
       await fetch(uploadUrl, { method: 'PUT', body: image })
 
       // 3) Enviar mensagem com URL pública
-      await fetch('/api/messages/send', {
+      await authedFetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -327,7 +328,7 @@ export function MessagesProvider({ children }: MessagesProps) {
       await fetch(uploadUrl, { method: 'PUT', body: document })
 
       // 3) Enviar mensagem com URL pública
-      await fetch('/api/messages/send', {
+      await authedFetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

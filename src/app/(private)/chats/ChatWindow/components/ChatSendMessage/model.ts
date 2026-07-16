@@ -11,6 +11,7 @@ import {
 } from "react"
 import { v4 as uuidv4 } from "uuid"
 import { MinioService } from "@/services/MinioService"
+import { authedFetch } from "@/lib/api/authedFetch"
 
 // Constante para o nome do evento personalizado
 export const MESSAGE_SENT_EVENT = "message_sent";
@@ -108,7 +109,7 @@ const useChatSendMessageModel = (): IChatSendMessageModel => {
 
     try {
       // Enviar via API interna para inserir no DB (status sending) e acionar n8n
-      await fetch('/api/messages/send', {
+      await authedFetch('/api/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -352,7 +353,7 @@ const useChatSendMessageModel = (): IChatSendMessageModel => {
       await fetch(uploadUrl, { method: 'PUT', body: midia })
 
       // 3) Enviar mensagem com URL pública e caption (se houver)
-      await fetch('/api/messages/send', {
+      await authedFetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -433,7 +434,7 @@ const useChatSendMessageModel = (): IChatSendMessageModel => {
         })
 
         // 3) Disparar envio de mensagem com a URL pública do MinIO
-        await fetch('/api/messages/send', {
+        await authedFetch('/api/messages/send', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

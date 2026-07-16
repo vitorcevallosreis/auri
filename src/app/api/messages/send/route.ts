@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase/server"
+import { getAuthedCompanyId } from "@/lib/auth/tenant"
 
 // Types for request body
 interface SendMessageBody {
@@ -12,6 +13,14 @@ interface SendMessageBody {
 export async function POST(req: Request) {
   try {
     console.log("[api/messages/send] POST reached")
+
+    // Auth/tenant: rota server-only via service role; middleware não protege /api/*.
+    // Identidade vem do JWT (Bearer), não do cookie. Ownership checado abaixo (chat).
+    const callerCompanyId = await getAuthedCompanyId(req)
+    if (!callerCompanyId) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    }
+
     const body = (await req.json()) as SendMessageBody
     const { chat_id, message_type, content } = body
     console.log("[api/messages/send] payload:", { chat_id, message_type, hasContent: !!content })
@@ -101,7 +110,11 @@ export async function POST(req: Request) {
 
     if (chatErr || !chatData) {
       console.error("[api/messages/send] chat lookup failed", { chat_id, chatErr })
-      // Seguimos sem bloquear: ainda inserimos a mensagem (status refletirá a falha de envio).
+      return NextResponse.json({ error: "Chat não encontrado." }, { status: 404 })
+    }
+    // Ownership: o chat tem que ser do tenant do chamador (404 sem vazar existência).
+    if ((chatData as any).company_id !== callerCompanyId) {
+      return NextResponse.json({ error: "Chat não encontrado." }, { status: 404 })
     }
 
     // Resolver o canal Evolution do chat (bugfix P2.4: antes fazia join por
