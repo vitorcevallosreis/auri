@@ -54,12 +54,17 @@ inbox). **Escopo = só o gateway; a IA é o Plano 3.** Docs: `docs/superpowers/s
   Supabase via `auth.getUser` → `company_id` de `myia_users`), auth 401, ownership nas 4 ações, segredos
   (`token`/`urlapi`) removidos das respostas, `ChannelService` manda `Authorization: Bearer`. **Build limpo.**
 
+- **Auth pré-existente das rotas de mensagem — FECHADO (commit `d48c9a3`, tracker #13):**
+  `/api/messages/send` e `/api/messages/typing` agora exigem JWT (401) + validam `chat.company_id` ==
+  tenant (404). Helper `src/lib/api/authedFetch.ts` anexa `Bearer`; os 7 call sites de send migrados.
+  `/typing` também teve o join quebrado (`channel:channel_id`) corrigido para `instanceWpp`.
+
 **PENDENTE:**
-- **Auth PRÉ-EXISTENTE (não é regressão do Plano 2, mas fechar antes de escalar) — tracker #13:**
-  `/api/messages/send` e `/api/messages/typing` têm a mesma ausência de auth/tenant (send tem 7+ call
-  sites que precisariam mandar o Bearer — mudança ampla, testar sem quebrar a inbox); e
-  `src/services/MessageService.ts` chama o Evolution **direto do browser** lendo `token`/`urlapi` (expõe
-  segredo de instância ao client — mover pro servidor). `/typing` ainda tem o join quebrado `channel:channel_id`.
+- **Exposição de segredo ao browser — tracker #14 (hardening coordenado, NÃO feito):** `myia_channels.token`/
+  `urlapi` (apikey da instância) são legíveis pelo client via RLS, e `src/services/MessageService.ts`
+  (1457 linhas) chama o Evolution **direto do browser** lendo esses campos. Fix = mover as chamadas
+  Evolution do MessageService para rotas server-only (autenticadas) **e** revogar SELECT do client nas
+  colunas de segredo. Precisa de plano próprio (não é wholesale trivial).
 - **P2.7–P2.9 (precisa do VPS):** provisionar o VPS (🔸confirmar **Contabo SP** vs **Hetzner** — a spec
   recomenda Contabo SP por LGPD, alinhado ao Supabase em sa-east-1), subir o Evolution via o runbook,
   setar `EVOLUTION_API_*` reais, criar instância + parear QR, teste ponta-a-ponta ao vivo.
