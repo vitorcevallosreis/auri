@@ -1,7 +1,7 @@
 # Handoff — myia_app (Auri Software)
 
 > **Para a próxima sessão:** leia este arquivo primeiro. Ele resume tudo que foi feito e
-> o que vem a seguir, para você continuar sem re-derivar contexto. Atualizado: 2026-07-15.
+> o que vem a seguir, para você continuar sem re-derivar contexto. Atualizado: 2026-07-16.
 
 ---
 
@@ -11,18 +11,62 @@
 clínicas (Next.js 15 + Supabase + MinIO). Estava **inativo há ~1 ano**; estamos relançando numa
 stack que controlamos e adicionando funcionalidades.
 
-**Plano 1 (migração para Supabase próprio + religar painel) está COMPLETO e validado.** Código no
-GitHub, branch aberta para PR. Próximo é o Plano 2 (WhatsApp) — ver Roadmap.
+**Plano 1 (migração para Supabase próprio + religar painel) está COMPLETO, validado e MERGEADO na `main`**
+(merge `--no-ff`, commit `15ff53e`, pushed). Review de pré-merge deu **0 bloqueadores**.
+
+**Plano 2 (Evolution API self-host + ingress WhatsApp) está EM ANDAMENTO** na branch
+`feat/plan2-evolution-ingress` (pushed) — ver a seção "Plano 2" abaixo. Feito na noite de 2026-07-15→16
+numa sessão orquestrada (maestro + 2 agentes Maestri).
+
+---
+
+## Plano 2 — estado (branch `feat/plan2-evolution-ingress`)
+
+**Contexto:** o gateway antigo de WhatsApp (n8n em `webhooks.sejanexa.com.br`) se perdeu. O Plano 2
+reconstrói o gateway como infra nossa: Evolution API v2.3.7 self-hosted num VPS + rotas de
+ingress/envio/gestão-de-canal no Next.js, gravando no Supabase via service role (Realtime atualiza a
+inbox). **Escopo = só o gateway; a IA é o Plano 3.** Docs: `docs/superpowers/specs/2026-07-15-plano2-evolution-ingress-design.md`
+(spec, com decisões marcadas 🔸DECISÃO p/ você revisar) e `docs/superpowers/plans/2026-07-15-plano2-evolution-ingress.md` (plano).
+
+**JÁ FEITO E VERIFICADO (codável sem VPS):**
+- **P2.0** fix do build de produção (era pré-existente, NÃO regressão do Plano 1): `force-dynamic` no
+  layout privado — `npm run build` volta a passar. `src/app/(private)/layout.tsx`.
+- **P2.1** migration `0011_whatsapp_ingress.sql` (índice em `myia_channels."instanceWpp"`; único parcial
+  em `myia_messages(instance_id, message_id)` p/ dedup) + teste. **11/11 testes SQL passam**, aplicada na nuvem.
+- **P2.2** envs server-only: `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET` (em `.env.example`).
+- **P2.3** rota de ingress `src/app/api/whatsapp/ingress/route.ts` — valida header `X-Auri-Webhook-Secret`,
+  resolve tenant por `instanceWpp`, upsert contato/chat, insert idempotente de mensagem. **E2E testado
+  via curl contra o Supabase dev** (grava, dedup, 401, drop de fromMe/grupo). Commit `837de03`.
+- **P2.4** envio direto ao Evolution em `src/app/api/messages/send/route.ts` (substitui o n8n por
+  `POST {urlapi}/message/sendText/{instance}`), **corrige um bug latente** (join por `channel_id`
+  inexistente → agora resolve por `instanceWpp = chat.instance_id`), status SENT/FAILED; mídia = TODO
+  fase 2. Commit `ec41762`.
+- **P2.6** runbook de deploy do VPS: `docs/deploy/evolution-vps.md` (compose, nginx+TLS, webhook, backups). Commit `1df5d3e`.
+
+**PENDENTE:**
+- **P2.5 (codável, NÃO feito — o agente atingiu o limite de uso da conta a meio caminho):** rotas
+  `src/app/api/whatsapp/instance/*` (create/connect/logout/delete usando a API key GLOBAL do Evolution
+  server-side, persistindo em `myia_channels`), reescrever `src/services/ChannelService.ts` (n8n → rotas
+  Next) e religar a UI `assistants/[assistant_id]/Channels/{model.ts,view.tsx}` (QR via `qrcode64`/status).
+- **P2.7–P2.9 (precisa do VPS):** provisionar o VPS (🔸confirmar **Contabo SP** vs **Hetzner** — a spec
+  recomenda Contabo SP por LGPD, alinhado ao Supabase em sa-east-1), subir o Evolution via o runbook,
+  setar `EVOLUTION_API_*` reais, criar instância + parear QR, teste ponta-a-ponta ao vivo.
+
+**Como o Plano 2 foi tocado:** sessão orquestrada — o maestro fez merge/spec/plano/integração/verificação;
+Agent 1 fez review do Plano 1, build-check, e a implementação P2.0–P2.4; Agent 2 fez a pesquisa do
+Evolution e o runbook. Artefatos de trabalho da noite (não versionados) em `../.night-work/` (research,
+review, reverse-engineering, drafts).
 
 ---
 
 ## Estado do repositório
 
 - **GitHub:** `https://github.com/vitorcevallosreis/auri` (privado).
-- **Branch de trabalho:** `feat/plan1-supabase-migration` (base `main`). PR ainda **não aberto**:
-  `https://github.com/vitorcevallosreis/auri/pull/new/feat/plan1-supabase-migration`.
+- **`main`:** já tem o **Plano 1 mergeado** (`15ff53e`, `--no-ff`), pushed. Não usamos PR — merge local
+  direto (o `gh` CLI **não** está instalado nesta máquina).
+- **Branch de trabalho atual:** `feat/plan2-evolution-ingress` (base `main`, pushed). 4 commits do Plano 2.
 - Dir local: `/Users/vitorcreis/CascadeProjects/Auri Software/myia_app-develop`.
-- `git status` limpo, local == remote. `gh` CLI **não** instalado (PR foi feito via web).
+- `git status` limpo, local == remote.
 
 ## Projeto Supabase (nosso)
 
