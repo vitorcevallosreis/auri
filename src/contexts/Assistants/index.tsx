@@ -33,13 +33,6 @@ export function AssistantsProvider({ children }: AssistantsProviderProps) {
   const [channel, set_channel] = useState(Default.channel)
   const [followUpSteps, setFollowUpSteps] = useState(Default.followUpSteps)
 
-  // Deriva o tipo de API do canal com base nos campos retornados do backend
-  const deriveApiTypeFromChannel = (ch?: Channel | null): "Evolution" | "Waha" => {
-    const s = `${ch?.apiUtilizada || ""} ${ch?.tipoConexao || ""}`.toLowerCase()
-    if (s.includes("waha")) return "Waha"
-    return "Evolution"
-  }
-
   useEffect(() => {
     if (!assistant.id) return
 
@@ -345,35 +338,42 @@ export function AssistantsProvider({ children }: AssistantsProviderProps) {
       console.log("ID do assistente:", assistant.id);
       console.log("ID da empresa:", user.company_id);
 
-      // Chamar o webhook para criar o canal
+      // Criar o canal + provisionar a instância no Evolution (rota server-only).
       const response = await ChannelService.createChannel(
         assistant.id,
-        user.company_id,
         channelName,
         apiType
       );
 
-      console.log("Webhook chamado com sucesso:", response);
-      
-      // Se o backend retornou sucesso, o canal foi criado
-      if (response && (response.status === "Sucesso" || response.status === "sucesso")) {
-        toast.success(response.motivo || "Canal criado com sucesso!");
-        
-        // Atualizar a lista de canais
-        const updatedChannels = await getChannels();
-        console.log("Lista de canais atualizada após criação");
-        
-        // Informar ao usuário que o canal foi criado com sucesso
-        toast.info("Canal criado com sucesso! Se não aparecer na lista, atualize a página.");
-        
-        // Retornar null, pois não temos o canal completo ainda
-        // O componente que chamou esta função deve lidar com isso adequadamente
-        return null;
-      } else {
-        console.error("Resposta inesperada do backend:", response);
-        toast.error("Erro ao criar canal: resposta inesperada do servidor");
-        return null;
+      console.log("Rota /api/whatsapp/instance (create) respondeu:", response);
+
+      // A rota já criou a linha em myia_channels e devolve o canal gravado.
+      if (response?.channel?.id) {
+        const newChannel = response.channel;
+
+        // Atualizar a lista de canais (a rota gravou via service role).
+        await getChannels();
+        set_channel(newChannel);
+
+        if (response.ok) {
+          toast.success("Canal criado com sucesso!");
+        } else {
+          // Linha criada, mas o Evolution falhou (ex.: VPS ainda não provisionado).
+          // Mantemos o canal para permitir reconectar depois.
+          toast.warning(
+            response.error
+              ? "Canal criado, mas a instância do Evolution falhou. Reconecte quando o gateway estiver ativo."
+              : "Canal criado."
+          );
+        }
+
+        // Retornar o canal para a UI abrir o modal de QR automaticamente.
+        return newChannel;
       }
+
+      console.error("Resposta inesperada da rota de instância:", response);
+      toast.error(response?.error || "Erro ao criar canal: resposta inesperada do servidor");
+      return null;
     } catch (error) {
       console.error("Erro ao criar canal:", error);
       toast.error("Erro ao criar canal");
@@ -418,15 +418,13 @@ export function AssistantsProvider({ children }: AssistantsProviderProps) {
         "channel_id": channel_id
       });
 
-      // Chamar o webhook para gerar o QR code
-      const response = await ChannelService.generateQRCode(
-        assistant.id,
-        user.company_id,
-        currentChannel.nome,
-        deriveApiTypeFromChannel(currentChannel)
-      );
+      // Chamar a rota de instância (connect) para gerar/renovar o QR code.
+      const response = await ChannelService.generateQRCode(currentChannel.id);
 
-      console.log("Resposta da API de geração de QR code:", response);
+      console.log("Resposta da rota de connect (QR code):", response);
+      if (response && response.ok === false && response.error) {
+        console.warn("Connect retornou erro do Evolution:", response.error);
+      }
 
       // Atualizar o canal no banco de dados local para obter o QR code atualizado
       // Podemos precisar esperar um pouco para que o QR code seja processado no backend
@@ -469,30 +467,23 @@ export function AssistantsProvider({ children }: AssistantsProviderProps) {
   }
 
   async function removeConnectionChannel(channel_id: string): Promise<void> {
-    if (!channel_id || !assistant.id || !user?.company_id || !channel.nome) return
+    // A rota de instância resolve tudo a partir do channel_id; não dependemos
+    // mais do canal atualmente selecionado no contexto (`channel.nome`), que
+    // podia estar vazio e bloquear a ação silenciosamente.
+    if (!channel_id || !assistant.id) return
 
     setIsLoading(true)
 
     try {
-      // Chamar o webhook para parar o canal
-      await ChannelService.stopChannel(
-        assistant.id,
-        user.company_id,
-        channel.nome,
-        deriveApiTypeFromChannel(channel)
-      );
-
-      // Atualizar o status no banco de dados local
-      const { error }: { error: any } = await supabase
-        .from(SUPA_TABLES.table_myia_channels)
-        .update({ status: "close" })
-        .match({ id: channel_id })
-        .single()
-
-      if (error) throw error
+      // Desconectar via rota de instância (logout). A rota já atualiza
+      // status='close' em myia_channels via service role.
+      const response = await ChannelService.stopChannel(channel_id)
+      if (response.ok === false && response.error) {
+        console.warn("Logout retornou erro do Evolution:", response.error)
+      }
 
       await getChannel(channel_id)
-      
+
       toast.success("Dispositivo desconectado com sucesso!")
     } catch (error) {
       toast.error("Erro ao desconectar dispositivo")
@@ -503,39 +494,28 @@ export function AssistantsProvider({ children }: AssistantsProviderProps) {
   }
 
   async function deleteChannel(channel_id: string): Promise<boolean> {
-    if (!channel_id || !assistant.id || !user?.company_id || !channel.nome) return false
+    // Idem removeConnectionChannel: basta o channel_id alvo.
+    if (!channel_id || !assistant.id) return false
 
     setIsLoading(true)
 
     try {
-      // Chamar o webhook para excluir o canal
-      const response = await ChannelService.deleteChannel(
-        assistant.id,
-        user.company_id,
-        channel.nome,
-        deriveApiTypeFromChannel(channel)
-      );
+      // Excluir via rota de instância: remove a instância no Evolution e a
+      // linha em myia_channels (service role).
+      const response = await ChannelService.deleteChannel(channel_id)
 
-      // Validar resposta do webhook
-      const statusStr = (response?.status || "").toString().toLowerCase()
-      const success = statusStr === "sucesso" || statusStr === "success"
-      if (!success) {
-        toast.error(response?.motivo || "Erro ao excluir canal")
+      if (!response?.ok) {
+        toast.error(response?.error || "Erro ao excluir canal")
         return false
       }
-
-      // Excluir o canal do banco de dados local somente em caso de sucesso
-      const { error }: { error: any } = await supabase
-        .from(SUPA_TABLES.table_myia_channels)
-        .delete()
-        .match({ id: channel_id })
-
-      if (error) throw error
+      if (response.warning) {
+        console.warn("Delete concluído com aviso do Evolution:", response.warning)
+      }
 
       // Resetar o estado do canal
       set_channel(Default.channel)
-      
-      toast.success(response?.motivo || "Canal excluído com sucesso!")
+
+      toast.success("Canal excluído com sucesso!")
       return true
     } catch (error) {
       toast.error("Erro ao excluir canal")
