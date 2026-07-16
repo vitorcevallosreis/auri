@@ -68,6 +68,9 @@ inbox). **Escopo = só o gateway; a IA é o Plano 3.** Docs: `docs/superpowers/s
 - **P2.7–P2.9 (precisa do VPS):** provisionar o VPS (🔸confirmar **Contabo SP** vs **Hetzner** — a spec
   recomenda Contabo SP por LGPD, alinhado ao Supabase em sa-east-1), subir o Evolution via o runbook,
   setar `EVOLUTION_API_*` reais, criar instância + parear QR, teste ponta-a-ponta ao vivo.
+  **Prep pronta para esta fase:** siga `docs/deploy/plano2-go-live-checklist.md` (checklist linear) e rode
+  `node scripts/whatsapp-golive-check.mjs` após o deploy — ele valida o **caveat do webhook** (confirma
+  via `/webhook/find` se o `/instance/create` persistiu o webhook; se não, imprime o curl do `/webhook/set`).
 
 **Como o Plano 2 foi tocado:** sessão orquestrada — o maestro fez merge/spec/plano/integração/verificação;
 Agent 1 fez review do Plano 1, build-check, e a implementação P2.0–P2.4 (parou no limite de uso; o
