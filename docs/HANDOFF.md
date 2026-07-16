@@ -48,8 +48,18 @@ inbox). **Escopo = só o gateway; a IA é o Plano 3.** Docs: `docs/superpowers/s
   → abre modal de QR; fixes de guardas de logout/delete). **Build limpo.** Commit `7037973`.
   ⚠️ Runtime contra o Evolution NÃO testado (precisa do VPS). Ponto de atenção a validar ao vivo: o
   envelope `webhook` embutido no `/instance/create` (usa `byEvents/base64`) pode precisar de ajuste.
+- **Fix de segurança (review do P2.5 achou um IDOR cross-tenant):** `src/app/api/whatsapp/instance` é
+  server-only via service role e o middleware **não** protege `/api/*` → sem auth, qualquer um pegaria o
+  QR/token de outra empresa. Fechado no commit `8aa771d`: helper `src/lib/auth/tenant.ts` (valida o JWT do
+  Supabase via `auth.getUser` → `company_id` de `myia_users`), auth 401, ownership nas 4 ações, segredos
+  (`token`/`urlapi`) removidos das respostas, `ChannelService` manda `Authorization: Bearer`. **Build limpo.**
 
 **PENDENTE:**
+- **Auth PRÉ-EXISTENTE (não é regressão do Plano 2, mas fechar antes de escalar) — tracker #13:**
+  `/api/messages/send` e `/api/messages/typing` têm a mesma ausência de auth/tenant (send tem 7+ call
+  sites que precisariam mandar o Bearer — mudança ampla, testar sem quebrar a inbox); e
+  `src/services/MessageService.ts` chama o Evolution **direto do browser** lendo `token`/`urlapi` (expõe
+  segredo de instância ao client — mover pro servidor). `/typing` ainda tem o join quebrado `channel:channel_id`.
 - **P2.7–P2.9 (precisa do VPS):** provisionar o VPS (🔸confirmar **Contabo SP** vs **Hetzner** — a spec
   recomenda Contabo SP por LGPD, alinhado ao Supabase em sa-east-1), subir o Evolution via o runbook,
   setar `EVOLUTION_API_*` reais, criar instância + parear QR, teste ponta-a-ponta ao vivo.
