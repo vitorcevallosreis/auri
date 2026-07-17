@@ -6,7 +6,7 @@ import { useContext, useEffect, useState, useCallback } from "react"
 import { useDisclosure } from "@nextui-org/react"
 import { useParams } from "next/navigation"
 import { toast } from "sonner"
-import { supabase, SUPA_TABLES } from "@/lib/supabase/config"
+import { supabase } from "@/lib/supabase/config"
 
 export interface IChannelsModel {
   channel: Channel
