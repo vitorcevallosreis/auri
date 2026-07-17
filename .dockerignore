@@ -1,0 +1,53 @@
+# Contexto do build do Docker: manter mínimo e SEM SEGREDOS.
+
+# Dependências e artefatos de build (o Dockerfile refaz via npm ci / next build)
+node_modules
+.next
+out
+build
+dist
+
+# Git / VCS
+.git
+.gitignore
+.gitattributes
+
+# SEGREDOS — nunca mandar para o contexto do build.
+# (.env.example é útil como referência, mas não é necessário no build.)
+.env
+.env.*
+*.pem
+*.key
+
+# Logs e lixo de ferramenta
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Docs e material de trabalho (não entram na imagem)
+docs
+.night-work
+README*.md
+*.md
+
+# Backend/infra que não faz parte do runtime do app
+supabase
+scripts
+
+# Testes / cobertura
+coverage
+.nyc_output
+**/*.test.ts
+**/*.test.tsx
+
+# Docker
+Dockerfile
+.dockerignore
