@@ -15,8 +15,69 @@ stack que controlamos e adicionando funcionalidades.
 (merge `--no-ff`, commit `15ff53e`, pushed). Review de pré-merge deu **0 bloqueadores**.
 
 **Plano 2 (Evolution API self-host + ingress WhatsApp) está EM ANDAMENTO** na branch
-`feat/plan2-evolution-ingress` (pushed) — ver a seção "Plano 2" abaixo. Feito na noite de 2026-07-15→16
-numa sessão orquestrada (maestro + 2 agentes Maestri).
+`feat/plan2-evolution-ingress` (pushed) — ver a seção "Plano 2" abaixo. Feito em sessões orquestradas
+(maestro + 2 agentes Maestri).
+
+---
+
+## 🚦 FASE LIVE — estado atual (2026-07-19) — LEIA PRIMEIRO
+
+### ✅ NO AR e validado
+- **Evolution API v2.3.7 rodando em `https://wa.auri.global`** — VPS **Contabo US East `80.190.72.243`**,
+  TLS válido (Let's Encrypt), 3 containers (`evolution_api`, `evolution_postgres`, `evolution_redis`)
+  com `restart: always` (sobrevive reboot). Rede docker `evolution_evolution-net`.
+- **Smoke-test TUDO VERDE contra o Evolution real** (`node scripts/whatsapp-golive-check.mjs`): cria
+  instância, o webhook **persiste** (o "caveat" NÃO existe no v2.3.7), QR e connectionState ok.
+- **Acesso:** SSH por **chave** — `ssh root@80.190.72.243` (sem senha). Segredos gerados em
+  **`../.night-work/vps-secrets.env`** (`EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET`).
+- **App-deploy env** pronto em **`../.night-work/app-deploy.env`** (valores reais de build+runtime).
+
+### 🔄 App: deploy NO VPS — em andamento (parado a pedido do usuário)
+Decisão de arquitetura: **servir o app em `wa.auri.global`** (nginx → app:3000) e deixar o **Evolution
+interno** (o app o acessa em `http://evolution_api:8080` pela rede docker). Robustez: tudo roda no VPS,
+não depende do Mac do usuário estar ligado.
+- ✅ Código merjado (`ad772f6`, pushed): Dockerfile standalone + `scripts/deploy-app-vps.sh`.
+- ✅ **Source já foi pra `/opt/auri-app` no VPS** (rsync feito).
+- ❌ **FALTA:** `docker build` no VPS → `docker run` (rede `evolution_evolution-net`, `127.0.0.1:3000`,
+  `--env-file /opt/auri-app/.env.runtime`) → **repoint do nginx** (`/etc/nginx/sites-available/evolution`:
+  `proxy_pass http://127.0.0.1:8080` → `:3000`; backup em `/root/nginx-evolution.bak.*`) → `nginx -t && reload`.
+  ⚠️ Após o repoint, o Evolution deixa de ser público em `wa.auri.global` (fica só interno — o que é ok).
+
+### ❌ O que falta para ficar 100% no ar
+1. **[deploy]** Buildar + subir o container do app no VPS (comandos prontos no `scripts/deploy-app-vps.sh`;
+   rodar os passos explicitamente — o script como bloco único foi barrado pelo classifier de auto-mode).
+2. **[deploy]** Repoint do nginx para o app + reload.
+3. **[verificar]** Login funciona? E o **warning `(private)/page` em standalone** — pode fazer a home `/`
+   dar 500 no container (bug conhecido de route-group + `force-dynamic`). Testar `/` e `/login`; se a home
+   500ar, o fix é garantir o `page_client-reference-manifest.js` no standalone (copiar no Dockerfile) ou
+   ajustar o `force-dynamic`.
+4. **[usuário]** No painel: **Assistants → Channels → criar canal → escanear o QR** com o WhatsApp do número.
+5. **[usuário]** **E2E real:** mandar msg do celular → aparece na inbox; responder pela inbox → chega no celular.
+
+### 🔧 Follow-ups (não bloqueiam o "no ar")
+- **#14** hardening da exposição de token client-side (MessageService server-side + revogar SELECT das
+  colunas `token`/`urlapi`) — deferido, precisa de plano próprio.
+- 🔐 **Resetar a senha root do VPS** no painel Contabo (ela passou pelo chat; acesso já é por chave SSH).
+- Depois de estabilizar: dar ao app um subdomínio próprio (`app.auri.global`) e mover o gateway p/ região BR (LGPD).
+
+### Comandos prontos para retomar o deploy (rodar os passos explícitos)
+```bash
+# 1. build no VPS (do Mac, com o env carregado):
+set -a; source "../.night-work/app-deploy.env"; set +a
+ssh root@80.190.72.243 "cd /opt/auri-app && docker build \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+  --build-arg NEXT_PUBLIC_SUPABASE_STORAGE_URL=$NEXT_PUBLIC_SUPABASE_STORAGE_URL \
+  --build-arg NEXT_PUBLIC_APP_URL=https://wa.auri.global \
+  --build-arg NEXT_PUBLIC_WEBHOOK=$NEXT_PUBLIC_WEBHOOK \
+  -t auri-app:latest ."
+# 2. runtime env + run (server-only):
+#    escrever /opt/auri-app/.env.runtime com SUPABASE_SERVICE_ROLE_KEY, EVOLUTION_API_URL=http://evolution_api:8080,
+#    EVOLUTION_API_KEY, EVOLUTION_WEBHOOK_SECRET (ver ../.night-work/app-deploy.env), chmod 600, então:
+ssh root@80.190.72.243 "docker rm -f auri-app 2>/dev/null; docker run -d --name auri-app --restart always \
+  --network evolution_evolution-net -p 127.0.0.1:3000:3000 --env-file /opt/auri-app/.env.runtime auri-app:latest"
+# 3. repoint nginx (proxy_pass :8080 -> :3000) + nginx -t && systemctl reload nginx
+```
 
 ---
 
