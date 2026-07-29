@@ -68,15 +68,21 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_CHANNEL_TOKEN=$NEXT_PUBLIC_CHANNEL_TOKEN \
     NEXT_PUBLIC_TEST_PHONE=$NEXT_PUBLIC_TEST_PHONE
 
+ENV NEXT_TELEMETRY_DISABLED=1
+
 # `src/lib/supabase/server.ts` faz throw no import se SUPABASE_SERVICE_ROLE_KEY
 # faltar. O build do Next importa esse módulo ao coletar as rotas de API, então
 # precisamos de um valor PLACEHOLDER (não-secreto) só para o build passar. Em
-# runtime o valor real vem do --env-file e sobrescreve este.
-ENV SUPABASE_SERVICE_ROLE_KEY="build-placeholder-not-a-real-key"
-
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN npm run build
+# runtime o valor real vem do --env-file.
+#
+# O placeholder vai INLINE no RUN, e não como `ENV`, de propósito: como ENV ele
+# virava uma camada da imagem e o BuildKit emitia
+# `SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data`.
+# O aviso é falso positivo (dispara pelo NOME da variável, não pelo valor — que
+# aqui é literalmente um placeholder, e num stage que é descartado), mas o ruído
+# já levou a um diagnóstico errado de "a service role key está gravada na
+# imagem". Inline no RUN o valor existe só durante o comando, e o aviso some.
+RUN SUPABASE_SERVICE_ROLE_KEY="build-placeholder-not-a-real-key" npm run build
 
 # ---------------------------------------------------------------------------
 # Stage 3: runner — imagem final mínima

@@ -15,25 +15,25 @@ export function middleware(request: NextRequest) {
   const publicRoutes = public_routes.find((route) => route.path === path)
   const authToken = request.cookies.get("authData")
 
-  // DESENVOLVIMENTO: Bypass de autenticação para desenvolvimento
-  if (process.env.NODE_ENV === "development") {
-    // Se não há token de auth, criar um fake para desenvolvimento
-    if (!authToken && !publicRoutes) {
-      const response = NextResponse.next()
-      // Criar um token fake para desenvolvimento
-      const fakeAuthData = {
-        company_id: "dev-company-id",
-        user_id: "dev-user-id",
-        hashed_password: "dev-password"
-      }
-      response.cookies.set("authData", JSON.stringify(fakeAuthData), {
-        path: "/",
-        maxAge: 60 * 60 * 24,
-        httpOnly: false
-      })
-      return response
-    }
-  }
+  // NÃO reintroduzir um "bypass de desenvolvimento" aqui.
+  //
+  // Existia neste ponto um bloco que, em NODE_ENV=development, plantava um
+  // cookie `authData` FALSO (company_id "dev-company-id") em quem abrisse
+  // qualquer rota privada deslogado. Ele causava três problemas:
+  //
+  //   1. Depois de plantado, o cookie fazia o próprio middleware tratar a
+  //      pessoa como autenticada — e como /login redireciona quem já está
+  //      logado, a tela de login ficava INALCANÇÁVEL em dev. Testar o fluxo de
+  //      login virava impossível sem limpar cookie na mão.
+  //   2. O company_id fake não existe no banco e não vem acompanhado de sessão
+  //      do Supabase Auth, então a RLS barrava tudo: o painel abria vazio ou
+  //      quebrado, sem erro claro.
+  //   3. Era um bypass de autenticação dependendo de uma única variável de
+  //      ambiente. Qualquer deploy que subisse sem NODE_ENV=production viraria
+  //      um app com login aberto.
+  //
+  // Em dev o fluxo agora é o mesmo de produção: cai em /login e entra com um
+  // usuário real do Supabase.
 
   if (!authToken && publicRoutes) {
     return NextResponse.next()
