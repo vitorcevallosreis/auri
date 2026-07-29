@@ -191,7 +191,7 @@ export default function TestAuthPage() {
       {result && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-2">Resultado da Verificação</h2>
-          <div className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
+          <div className="bg-muted p-4 rounded overflow-auto max-h-96">
             <pre>{JSON.stringify(result, null, 2)}</pre>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function TestAuthPage() {
       {directResult && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-2">Resultado da Consulta SQL</h2>
-          <div className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
+          <div className="bg-muted p-4 rounded overflow-auto max-h-96">
             <pre>{JSON.stringify(directResult, null, 2)}</pre>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function TestAuthPage() {
       {apiResult && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-2">Resultado da API</h2>
-          <div className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
+          <div className="bg-muted p-4 rounded overflow-auto max-h-96">
             <pre>{JSON.stringify(apiResult, null, 2)}</pre>
           </div>
         </div>

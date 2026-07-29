@@ -92,9 +92,9 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
       if (process.env.NODE_ENV === 'development' && user.company_id === 'dev-company-id') {
         return {
           id: 'dev-company-id',
-          name: 'Clínica Nexa - Desenvolvimento',
+          name: 'Clínica Auri - Desenvolvimento',
           description: 'Clínica de desenvolvimento para testes',
-          site_url: 'https://clinica-nexa.com.br',
+          site_url: 'https://clinica-auri.com.br',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }

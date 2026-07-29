@@ -9,7 +9,6 @@ import {
   AuthToken,
 } from "./interfaces"
 import { useRouter } from "next/navigation"
-import { Register } from "../../api/auth"
 import { supabase } from "@/lib/supabase/config"
 import { toast } from "sonner"
 import SUPA_TABLES from "../supa_tables"
@@ -108,11 +107,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         hashed_password: "",
       }
 
-      // Salvar nos cookies com configurações de segurança aprimoradas
+      // Salvar nos cookies com configurações de segurança aprimoradas.
+      //
+      // `secure` segue o protocolo REAL da página, não o NODE_ENV. Em
+      // https://app.auri.global o resultado é o mesmo de antes; a diferença
+      // aparece num build de produção servido em http:// (preview em rede,
+      // `next start` local, VPS antes do TLS), onde o navegador DESCARTA
+      // silenciosamente um cookie Secure — o middleware deixa de ver `authData`
+      // e devolve o usuário para /login sem nenhum erro visível.
       setCookie(null, "authData", JSON.stringify(authData), {
         path: "/",
         maxAge: 60 * 60 * 24 * 7, // Expira em 7 dias
-        secure: process.env.NODE_ENV === "production",
+        secure:
+          typeof window !== "undefined" &&
+          window.location.protocol === "https:",
         sameSite: "Strict",
       })
       
@@ -163,11 +171,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
         closeButton: true,
       })
 
+      // "/" é o painel real ("Piloto Automático" no menu), dentro do
+      // (private)/layout com sidebar. NÃO usar "/dashboard": aquela rota é uma
+      // página legada órfã, fora do DashboardLayout e com dados fictícios.
       router.push("/")
     } catch (error) {
-      // Erro ao tentar fazer login
+      // Sem log o erro real fica invisível: credencial errada, linha ausente em
+      // myia_users e falha de RLS viravam todos o mesmo toast genérico, sem
+      // nenhuma pista de qual dos três aconteceu.
+      console.error("[auth] falha no login:", error)
+
+      const description =
+        error instanceof Error ? error.message : "Tente novamente."
+
       toast.error("Erro ao tentar fazer login", {
         duration: 5000,
+        description,
         closeButton: true,
       })
     } finally {
@@ -178,32 +197,50 @@ export function AuthProvider({ children }: AuthProviderProps) {
   async function signUp(body: SignUnData): Promise<any> {
     setIsLoading(true)
     try {
-      const { data: company_data, error: company_error } = await supabase
-        .from(SUPA_TABLES.table_companies)
-        .insert([
-          { name: body.company_name, domain_server: body.domain_server },
-        ])
-        .select()
-        .single()
-
-      if (company_error) return
-
-      const result = await Register({
-        company_id: company_data.id,
-        name: body.name,
-        email: body.email,
-        password: body.password,
+      // O cadastro roda inteiro no servidor (/api/auth/signup): criar o usuário
+      // no Supabase Auth, a empresa e o vínculo em myia_users exige service role
+      // — do browser a RLS bloqueia o insert em myia_companies.
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: body.name,
+          email: body.email,
+          password: body.password,
+          company_name: body.company_name,
+          domain_server: body.domain_server,
+        }),
       })
 
-      if (!result.success) throw new Error("Não foi possível criar o usuário")
+      const result = await response.json()
 
-      toast.success("Cadastro Realizado com sucesso!", {
+      if (!response.ok) {
+        const messages: Record<string, string> = {
+          email_taken: "Este e-mail já está cadastrado. Tente fazer login.",
+          domain_taken: "Este domínio já está sendo usado, escolha outro.",
+          invalid_email: "Forneça um e-mail válido.",
+          weak_password: "A senha deve ter no mínimo 6 caracteres.",
+          missing_fields: "Preencha todos os campos.",
+        }
+
+        toast.error("Não foi possível criar a conta", {
+          duration: 5000,
+          description: messages[result?.error] ?? "Erro inesperado. Tente novamente!",
+          closeButton: true,
+        })
+
+        return
+      }
+
+      toast.success("Cadastro realizado com sucesso!", {
         duration: 3000,
-        description: "Faça o Login para acessar sua Conta!",
+        description: "Entrando na sua conta...",
         closeButton: true,
       })
 
-      router.push("/")
+      // Já autentica: signIn cria a sessão do Supabase (necessária para a RLS),
+      // resolve o company_id e redireciona.
+      await signIn({ email: body.email, password: body.password })
     } catch (error) {
       // Erro ao tentar fazer cadastro
       toast.error("Erro ao tentar fazer Cadastro!", {
@@ -258,7 +295,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         closeButton: true,
       })
     } catch (error) {
-      // Erro ao fazer logout
+      console.error("[auth] falha no logout:", error)
+
       toast.error("Falha ao tentar fazer o Logout!", {
         duration: 5000,
         description: "Ocorreu um erro inesperado. Tente novamente.",
@@ -269,12 +307,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function checkAvailableDomain(domain_server: string): Promise<boolean> {
     try {
-      const { data, error } = await supabase
-        .from(SUPA_TABLES.table_companies)
-        .select("*")
-        .eq("domain_server", domain_server)
+      // Server-side: a RLS de myia_companies só deixa o usuário ver a PRÓPRIA
+      // empresa, então uma consulta anônima daqui sempre voltaria vazia e diria
+      // "disponível" para qualquer domínio, inclusive os já usados.
+      const response = await fetch(
+        `/api/auth/signup?domain=${encodeURIComponent(domain_server)}`,
+      )
 
-      if (data && data.length > 0) {
+      if (!response.ok) throw new Error("falha na checagem de domínio")
+
+      const { available } = await response.json()
+
+      if (!available) {
         toast.warning(`Domínio ${domain_server} está sendo usado!`, {
           duration: 5000,
         })

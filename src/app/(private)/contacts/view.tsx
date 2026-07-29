@@ -34,7 +34,7 @@ export default function ContactsView({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total de Pacientes</p>
@@ -42,13 +42,13 @@ export default function ContactsView({
                 <p className="text-sm text-muted-foreground mt-1">Pacientes na base de dados</p>
               </div>
               <div className="bg-teal-50 p-3 rounded-full">
-                <Users className="h-6 w-6 text-[#00897B]" />
+                <Users className="h-6 w-6 text-primary" />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border shadow-sm p-6">
+        <div className="bg-card rounded-lg border shadow-sm p-6">
           <div className="flex flex-col space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-medium">Lista de Pacientes</h2>
@@ -56,11 +56,11 @@ export default function ContactsView({
                 <input
                   type="text"
                   placeholder="Buscar por nome ou telefone..."
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#00897B] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                   value={searchTerm || ''}
                   onChange={(e) => handleSearch(e.target.value)}
                 />
-                <div className="absolute left-3 top-2.5 text-gray-400">
+                <div className="absolute left-3 top-2.5 text-muted-foreground">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="m21 21-4.3-4.3"></path>
@@ -73,14 +73,14 @@ export default function ContactsView({
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-4 font-medium text-gray-500 text-sm">Nome</th>
-                    <th className="text-left py-4 font-medium text-gray-500 text-sm">Telefone</th>
-                    <th className="text-left py-4 font-medium text-gray-500 text-sm">Verificado</th>
+                    <th className="text-left py-4 font-medium text-muted-foreground text-sm">Nome</th>
+                    <th className="text-left py-4 font-medium text-muted-foreground text-sm">Telefone</th>
+                    <th className="text-left py-4 font-medium text-muted-foreground text-sm">Verificado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {contacts.map((contact, index: number) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
+                    <tr key={index} className="border-b hover:bg-muted">
                       <td className="py-4">
                         <div className="flex items-center space-x-3">
                           <Avatar
@@ -92,7 +92,7 @@ export default function ContactsView({
                           <span className="font-medium">{contact.name}</span>
                         </div>
                       </td>
-                      <td className="py-4 text-gray-600">{contact.number}</td>
+                      <td className="py-4 text-muted-foreground">{contact.number}</td>
                       <td className="py-4">
                         {contact.checked ? (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">

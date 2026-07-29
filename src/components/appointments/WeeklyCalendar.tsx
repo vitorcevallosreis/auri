@@ -91,7 +91,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
   };
 
   return (
-    <div className="border rounded-lg shadow-sm bg-white">
+    <div className="border rounded-lg shadow-sm bg-card">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-xl font-semibold">Agenda Semanal</h2>
         <div className="flex gap-2">
@@ -128,7 +128,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
               isToday(day) && "bg-blue-50"
             )}
           >
-            <div className="text-sm text-gray-500 uppercase">
+            <div className="text-sm text-muted-foreground uppercase">
               {format(day, 'EEE', { locale: ptBR })}
             </div>
             <div className={cn(
@@ -137,7 +137,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
             )}>
               {format(day, 'd')}
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-muted-foreground">
               {format(day, 'MMM', { locale: ptBR })}
             </div>
           </div>
@@ -162,7 +162,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                     </div>
                   ) : dayAppointments.length === 0 ? (
-                    <div className="text-center py-4 text-gray-400 text-sm">
+                    <div className="text-center py-4 text-muted-foreground text-sm">
                       Sem agendamentos
                     </div>
                   ) : (
@@ -185,11 +185,11 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
                               <div className="font-medium mb-1 truncate">
                                 {appointment.cliente_nome || "Cliente não informado"}
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-gray-600 mb-1 truncate">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1 truncate">
                                 <User className="h-3 w-3" /> 
                                 {appointment.professional_name}
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-gray-600 truncate">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
                                 <Bookmark className="h-3 w-3" /> 
                                 {appointment.service_name}
                               </div>

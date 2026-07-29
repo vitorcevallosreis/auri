@@ -30,7 +30,7 @@ export default function ChatHeaderView({
     "text-xl text-default-500 pointer-events-none flex-shrink-0"
 
   return (
-    <div className="flex w-full gap-3 bg-white border-b border-gray-300 p-2">
+    <div className="flex w-full gap-3 bg-card border-b border-border p-2">
       <ContactImage
         avatar_url={chat?.contact?.avatar_url ?? ""}
         name={chat?.contact?.name}
@@ -38,11 +38,11 @@ export default function ChatHeaderView({
 
       <div className="w-full flex justify-between items-center">
         <div className="flex-1">
-          <p className="font-medium text-gray-900">
+          <p className="font-medium text-foreground">
             {chat.contact?.name || chat.contact?.number}
           </p>
 
-          <div className="text-sm text-gray-400 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             {chat.contact?.number}
             {chat.channel_name && (
               <span 
@@ -64,7 +64,7 @@ export default function ChatHeaderView({
             <button
               onClick={() => chat.id && toggleChatPause(chat.id)}
               className={`flex items-center justify-center p-2 rounded-full transition-colors ${chat.chat_pause 
-                ? "bg-gray-200 hover:bg-gray-300 text-gray-700" 
+                ? "bg-muted hover:bg-gray-300 text-foreground" 
                 : "bg-green-100 hover:bg-green-200 text-green-700"}`}
               aria-label={chat.chat_pause ? "Reativar bot" : "Pausar bot"}
             >
@@ -78,7 +78,7 @@ export default function ChatHeaderView({
           </Tooltip>
           
           {/* Indicador de status do bot */}
-          <div className={`ml-2 flex items-center ${chat.chat_pause ? "text-gray-500" : "text-green-600"}`}>
+          <div className={`ml-2 flex items-center ${chat.chat_pause ? "text-muted-foreground" : "text-green-600"}`}>
             <Bot className="w-4 h-4 mr-1" />
             <span className="text-xs font-medium">
               {chat.chat_pause ? "Pausado" : "Ativo"}

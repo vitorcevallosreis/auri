@@ -88,13 +88,13 @@ export default function TestDbPage() {
             <div className="flex gap-2 mb-4">
               <button 
                 onClick={() => changeSchema("nexa")}
-                className={`px-3 py-1 rounded ${schema === "nexa" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+                className={`px-3 py-1 rounded ${schema === "nexa" ? "bg-blue-500 text-white" : "bg-muted"}`}
               >
                 nexa
               </button>
               <button 
                 onClick={() => changeSchema("public")}
-                className={`px-3 py-1 rounded ${schema === "public" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+                className={`px-3 py-1 rounded ${schema === "public" ? "bg-blue-500 text-white" : "bg-muted"}`}
               >
                 public
               </button>
@@ -120,7 +120,7 @@ export default function TestDbPage() {
               <p>Nenhum usuário encontrado</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-300">
+                <table className="min-w-full bg-card border border-border">
                   <thead>
                     <tr>
                       <th className="py-2 px-4 border-b">ID</th>

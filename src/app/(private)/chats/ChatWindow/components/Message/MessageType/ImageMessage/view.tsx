@@ -62,7 +62,7 @@ export default function ImageMessageView({
   }
 
   return w_full ? (
-    <div className={`${message.from_me ? "bg-[#efffe5]" : "bg-white"} rounded-md shadow-sm`}>
+    <div className={`${message.from_me ? "bg-[#efffe5]" : "bg-card"} rounded-md shadow-sm`}>
       <div 
         id={`image-${message.id}`}
         className="relative"
@@ -70,14 +70,14 @@ export default function ImageMessageView({
         {isVisible && (
           <>
             {!isLoaded && !error && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted dark:bg-gray-800 rounded-md">
                 <Loader2 className="w-6 h-6 text-primary animate-spin" />
               </div>
             )}
             
             {error && (
-              <div className="flex items-center justify-center h-[300px] w-[400px] bg-gray-100 dark:bg-gray-800 rounded-md">
-                <p className="text-sm text-gray-500">Não foi possível carregar a imagem</p>
+              <div className="flex items-center justify-center h-[300px] w-[400px] bg-muted dark:bg-gray-800 rounded-md">
+                <p className="text-sm text-muted-foreground">Não foi possível carregar a imagem</p>
               </div>
             )}
             
@@ -97,7 +97,7 @@ export default function ImageMessageView({
         )}
         
         {!isVisible && (
-          <div className="h-[300px] w-[400px] bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center">
+          <div className="h-[300px] w-[400px] bg-muted dark:bg-gray-800 rounded-md flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
           </div>
         )}
@@ -114,14 +114,14 @@ export default function ImageMessageView({
         {isVisible && (
           <>
             {!isLoaded && !error && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted dark:bg-gray-800 rounded-md">
                 <Loader2 className="w-6 h-6 text-primary animate-spin" />
               </div>
             )}
             
             {error && (
-              <div className="flex items-center justify-center h-[200px] w-[250px] bg-gray-100 dark:bg-gray-800 rounded-md">
-                <p className="text-sm text-gray-500">Não foi possível carregar a imagem</p>
+              <div className="flex items-center justify-center h-[200px] w-[250px] bg-muted dark:bg-gray-800 rounded-md">
+                <p className="text-sm text-muted-foreground">Não foi possível carregar a imagem</p>
               </div>
             )}
             
@@ -141,7 +141,7 @@ export default function ImageMessageView({
         )}
         
         {!isVisible && (
-          <div className="h-[200px] w-[250px] bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center">
+          <div className="h-[200px] w-[250px] bg-muted dark:bg-gray-800 rounded-md flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
           </div>
         )}

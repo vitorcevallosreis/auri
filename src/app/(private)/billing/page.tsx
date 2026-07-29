@@ -96,12 +96,12 @@ const billingData = [
     },
     value: "R$ 150,00",
     paymentMethod: "Múltiplos",
-    paymentMethodColor: "bg-gray-100 text-gray-700",
+    paymentMethodColor: "bg-muted text-foreground",
     status: "Pendente",
     statusColor: "bg-yellow-100 text-yellow-700",
     statusIcon: <AlertCircle className="h-4 w-4" />,
     billing: "Após o pagamento",
-    billingIcon: <Clock className="h-4 w-4 text-gray-500" />
+    billingIcon: <Clock className="h-4 w-4 text-muted-foreground" />
   },
   {
     id: 5,
@@ -157,15 +157,15 @@ export default function BillingPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-gray-900">Gestão Financeira</h1>
-            <p className="text-gray-600">Automatize cobranças e conciliação bancária</p>
+            <h1 className="text-3xl font-bold text-foreground">Gestão Financeira</h1>
+            <p className="text-muted-foreground">Automatize cobranças e conciliação bancária</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-[#00897B] text-[#00897B] hover:bg-[#00897B]/5">
+            <Button variant="outline" className="border-primary text-primary hover:bg-primary/5">
               <Receipt className="h-4 w-4 mr-2" />
               Cobrar atendimentos
             </Button>
-            <Button className="bg-[#00897B] hover:bg-[#00796B] text-white">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <Plus className="h-4 w-4 mr-2" />
               Nova Cobrança
             </Button>
@@ -184,12 +184,14 @@ export default function BillingPage() {
                     className={cn(
                       "flex items-center gap-2 pb-2 border-b-2 transition-colors font-medium",
                       activeTab === tab.id
-                        ? "border-[#00897B] text-[#00897B]"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+                        // Sublinhado no menta (elemento decorativo, pode ser
+                        // sólido) + rótulo em petróleo, que carrega o texto.
+                        ? "border-accent text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <span>{tab.label}</span>
-                    <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground">
                       {tab.count}
                     </Badge>
                   </button>
@@ -200,7 +202,7 @@ export default function BillingPage() {
             {/* Filters */}
             <div className="flex items-center gap-4 pt-4">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar..."
                   value={searchTerm}
@@ -240,7 +242,7 @@ export default function BillingPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50/50">
+                <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">Data de Criação</TableHead>
                   <TableHead className="font-semibold">Paciente</TableHead>
                   <TableHead className="font-semibold">Valor</TableHead>
@@ -251,8 +253,8 @@ export default function BillingPage() {
               </TableHeader>
               <TableBody>
                 {filteredData.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-gray-50/50 cursor-pointer">
-                    <TableCell className="text-gray-600">
+                  <TableRow key={item.id} className="hover:bg-muted/50 cursor-pointer">
+                    <TableCell className="text-muted-foreground">
                       {item.createdDate}
                     </TableCell>
                     
@@ -265,13 +267,13 @@ export default function BillingPage() {
                           className="border"
                         />
                         <div>
-                          <div className="font-medium text-gray-900">{item.patient.name}</div>
-                          <div className="text-sm text-gray-500">Paciente</div>
+                          <div className="font-medium text-foreground">{item.patient.name}</div>
+                          <div className="text-sm text-muted-foreground">Paciente</div>
                         </div>
                       </div>
                     </TableCell>
                     
-                    <TableCell className="font-semibold text-gray-900">
+                    <TableCell className="font-semibold text-foreground">
                       {item.value}
                     </TableCell>
                     
@@ -295,7 +297,7 @@ export default function BillingPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {item.billingIcon}
-                        <span className="text-gray-600">{item.billing}</span>
+                        <span className="text-muted-foreground">{item.billing}</span>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -311,8 +313,8 @@ export default function BillingPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total em Aberto</p>
-                  <p className="text-2xl font-bold text-gray-900">R$ 1.180,00</p>
+                  <p className="text-sm text-muted-foreground">Total em Aberto</p>
+                  <p className="text-2xl font-bold text-foreground">R$ 1.180,00</p>
                 </div>
                 <div className="p-3 bg-red-100 rounded-full">
                   <AlertCircle className="h-6 w-6 text-red-600" />
@@ -325,7 +327,7 @@ export default function BillingPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Recebido Este Mês</p>
+                  <p className="text-sm text-muted-foreground">Recebido Este Mês</p>
                   <p className="text-2xl font-bold text-green-600">R$ 3.240,00</p>
                 </div>
                 <div className="p-3 bg-green-100 rounded-full">
@@ -339,7 +341,7 @@ export default function BillingPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Aguardando</p>
+                  <p className="text-sm text-muted-foreground">Aguardando</p>
                   <p className="text-2xl font-bold text-amber-600">R$ 760,00</p>
                 </div>
                 <div className="p-3 bg-amber-100 rounded-full">
@@ -353,11 +355,11 @@ export default function BillingPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Taxa de Conversão</p>
-                  <p className="text-2xl font-bold text-[#00897B]">94%</p>
+                  <p className="text-sm text-muted-foreground">Taxa de Conversão</p>
+                  <p className="text-2xl font-bold text-primary">94%</p>
                 </div>
-                <div className="p-3 bg-[#E0F2F1] rounded-full">
-                  <CreditCard className="h-6 w-6 text-[#00897B]" />
+                <div className="p-3 bg-accent/20 rounded-full">
+                  <CreditCard className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </CardContent>

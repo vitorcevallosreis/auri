@@ -105,7 +105,7 @@ export const ServiceDetailsStep: React.FC<ServiceDetailsStepProps> = ({
         </div>
 
         <div className="grid gap-4 pt-4">
-          <Card className={cn("border-2", isInsurance ? "border-blue-200" : "border-gray-100")}>
+          <Card className={cn("border-2", isInsurance ? "border-blue-200" : "border-border")}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <Label htmlFor="use-insurance" className="text-base font-medium">
@@ -164,7 +164,7 @@ export const ServiceDetailsStep: React.FC<ServiceDetailsStepProps> = ({
               placeholder="1"
               className="w-full"
             />
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Informe o número de pessoas que participarão da sessão em grupo
             </p>
           </div>
@@ -182,7 +182,7 @@ export const ServiceDetailsStep: React.FC<ServiceDetailsStepProps> = ({
             placeholder="0,00"
             className="w-full"
           />
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {isInsurance 
               ? 'Informe o valor da sessão cobrado do convênio' 
               : 'Informe o valor a ser cobrado do cliente'}

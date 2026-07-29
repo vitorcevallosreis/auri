@@ -208,7 +208,7 @@ export function MessageServiceTester() {
         )}
       </CardContent>
       <CardFooter className="flex justify-between">
-        <p className="text-xs text-gray-500">Esta é uma ferramenta de teste para o novo serviço de mensagens diretas.</p>
+        <p className="text-xs text-muted-foreground">Esta é uma ferramenta de teste para o novo serviço de mensagens diretas.</p>
       </CardFooter>
     </Card>
   );

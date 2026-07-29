@@ -22,7 +22,7 @@ const statusColorMap: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800",     // agendado
   completed: "bg-green-100 text-green-800",   // concluído
   cancelled: "bg-red-100 text-red-800",       // cancelado
-  no_show: "bg-gray-100 text-gray-800",       // não compareceu
+  no_show: "bg-muted text-foreground",       // não compareceu
   rescheduled: "bg-yellow-100 text-yellow-800" // reagendado
 };
 

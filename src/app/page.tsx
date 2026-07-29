@@ -90,7 +90,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <StatCard
               title="Consultas Realizadas"
               value={loadingAppointments ? "Carregando..." : appointmentMetrics.total.toLocaleString('pt-BR')}
-              icon={<Stethoscope className="h-5 w-5 text-[#00897B]" />}
+              icon={<Stethoscope className="h-5 w-5 text-primary" />}
               trend={appointmentMetrics.percentChange !== undefined ? { 
                 value: appointmentMetrics.percentChange, 
                 isPositive: appointmentMetrics.percentChange >= 0 
@@ -100,21 +100,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <StatCard
               title="Tempo Médio de Consulta"
               value={loadingAppointments ? "Carregando..." : `${appointmentMetrics.averageTime || 0} min`}
-              icon={<Activity className="h-5 w-5 text-[#00897B]" />}
+              icon={<Activity className="h-5 w-5 text-primary" />}
               trend={{ value: -5, isPositive: true }}
             />
             
             <StatCard
               title="Taxa de Comparecimento"
               value={loadingAppointments ? "Carregando..." : `${appointmentMetrics.resolutionRate || 0}%`}
-              icon={<HeartHandshake className="h-5 w-5 text-[#00897B]" />}
+              icon={<HeartHandshake className="h-5 w-5 text-primary" />}
               trend={{ value: 3, isPositive: true }}
             />
 
             <StatCard
               title="Satisfação do Paciente"
               value="4.8"
-              icon={<Star className="h-5 w-5 text-[#00897B]" />}
+              icon={<Star className="h-5 w-5 text-primary" />}
               trend={{ value: 2, isPositive: true }}
             />
           </div>
@@ -174,7 +174,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           </p>
                         </div>
                         <div className="text-right">
-                          <Badge variant="outline" className="bg-teal-50 text-[#00897B] border-teal-200">
+                          <Badge variant="outline" className="bg-teal-50 text-primary border-teal-200">
                             {index < 3 ? 'Mais procurado' : 'Procurado'}
                           </Badge>
                         </div>
@@ -196,28 +196,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <StatCard
               title="Agendamentos Confirmados"
               value="85%"
-              icon={<CalendarCheck className="h-5 w-5 text-[#00897B]" />}
+              icon={<CalendarCheck className="h-5 w-5 text-primary" />}
               trend={{ value: 4, isPositive: true }}
             />
             
             <StatCard
               title="Tempo de Espera"
               value="1.2 min"
-              icon={<Clock className="h-5 w-5 text-[#00897B]" />}
+              icon={<Clock className="h-5 w-5 text-primary" />}
               trend={{ value: -15, isPositive: true }}
             />
             
             <StatCard
               title="Recepcionistas Ativas"
               value="24"
-              icon={<UserCheck className="h-5 w-5 text-[#00897B]" />}
+              icon={<UserCheck className="h-5 w-5 text-primary" />}
               trend={{ value: 2, isPositive: true }}
             />
 
             <StatCard
               title="Taxa de Cancelamento"
               value="3.2%"
-              icon={<TrendingUp className="h-5 w-5 text-[#00897B]" />}
+              icon={<TrendingUp className="h-5 w-5 text-primary" />}
               trend={{ value: -8, isPositive: true }}
             />
           </div>

@@ -31,7 +31,7 @@ export function StatCard({ title, value, trend, icon }: StatCardProps) {
                 {trend.value}%
               </span>
             ) : (
-              <span className="text-xs text-gray-400">Sem variação</span>
+              <span className="text-xs text-muted-foreground">Sem variação</span>
             )}
           </div>
         </div>

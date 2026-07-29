@@ -46,7 +46,7 @@ export default function MessageMetadata({
   return message.from_me ? (
     <div
       className={twMerge(
-        "flex items-center justify-end gap-1 text-xs text-gray-400 ml-auto text-right rounded",
+        "flex items-center justify-end gap-1 text-xs text-muted-foreground ml-auto text-right rounded",
         bgColor,
         textColor
       )}
@@ -59,7 +59,7 @@ export default function MessageMetadata({
   ) : (
     <div
       className={twMerge(
-        "flex-end items-center gap-1 text-xs text-gray-400 p-1 rounded",
+        "flex-end items-center gap-1 text-xs text-muted-foreground p-1 rounded",
         bgColor,
         textColor
       )}

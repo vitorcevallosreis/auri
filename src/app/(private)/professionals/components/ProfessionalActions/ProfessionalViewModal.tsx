@@ -58,7 +58,7 @@ export default function ProfessionalViewModal({
         <>
           <ModalHeader className="flex flex-col gap-1">
             <h2 className="text-xl">{professional.nome}</h2>
-            <p className="text-sm text-gray-500 font-normal">
+            <p className="text-sm text-muted-foreground font-normal">
               {professional.formacao} - {professional.especialidade}
             </p>
           </ModalHeader>
@@ -66,13 +66,13 @@ export default function ProfessionalViewModal({
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
                     Registro
                   </h3>
                   <p>{professional.registro || "Não informado"}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
                     Contato
                   </h3>
                   <p>{professional.email}</p>
@@ -83,7 +83,7 @@ export default function ProfessionalViewModal({
               <Divider />
 
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
                   Categorias de Atendimento
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -145,7 +145,7 @@ export default function ProfessionalViewModal({
               <Divider />
 
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
                   Convênios Aceitos
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -185,7 +185,7 @@ export default function ProfessionalViewModal({
               <Divider />
 
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
                   Horários de Atendimento
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -210,7 +210,7 @@ export default function ProfessionalViewModal({
                         )
                       ) : (
                         // Caso seja outro formato (como array), exibir mensagem alternativa
-                        <div className="col-span-2 text-gray-500 text-sm">
+                        <div className="col-span-2 text-muted-foreground text-sm">
                           Horários não disponíveis no formato esperado
                         </div>
                       )}
@@ -223,7 +223,7 @@ export default function ProfessionalViewModal({
                 <>
                   <Divider />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">
                       Observações
                     </h3>
                     <p className="text-sm whitespace-pre-wrap">

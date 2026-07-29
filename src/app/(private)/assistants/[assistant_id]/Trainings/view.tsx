@@ -12,7 +12,7 @@ export default function TrainingsView({
 }: ReturnType<typeof useTrainingsModel>) {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="bg-gray-100 p-2 mb-4">🦾 Treinamentos</div>
+      <div className="bg-muted p-2 mb-4">🦾 Treinamentos</div>
 
       <div className="grid grid-rows-4 gap-3">
         <div>

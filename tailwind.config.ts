@@ -19,7 +19,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['SF Pro Display', 'SF Pro Text', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        // Aponta para a variável que o next/font define no <body> (layout.tsx).
+        // Antes daqui esta lista pedia 'SF Pro Display', que o app nunca
+        // carregou — então `font-sans` caía direto no fallback do sistema.
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -54,6 +57,11 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        // Superfície de marca: sempre o petróleo dominante, nos dois temas.
+        brand: {
+          DEFAULT: "hsl(var(--brand))",
+          foreground: "hsl(var(--brand-foreground))",
         },
       },
       borderRadius: {

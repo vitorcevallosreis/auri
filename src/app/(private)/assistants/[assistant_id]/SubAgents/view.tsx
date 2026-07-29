@@ -208,8 +208,8 @@ export default function SubAgentsView() {
           <p>Carregando sub-agentes...</p>
         </div>
       ) : subAgents.length === 0 ? (
-        <div className="flex flex-col justify-center items-center h-40 border rounded-md p-6 bg-gray-50">
-          <p className="text-gray-500 mb-4">Nenhum sub-agente encontrado</p>
+        <div className="flex flex-col justify-center items-center h-40 border rounded-md p-6 bg-muted">
+          <p className="text-muted-foreground mb-4">Nenhum sub-agente encontrado</p>
           <Dialog>
             <DialogTrigger asChild>
               <Button
@@ -243,17 +243,17 @@ export default function SubAgentsView() {
                 <div className="space-y-2">
                   <div>
                     <p className="text-sm font-medium">Prompt:</p>
-                    <p className="text-sm text-gray-500 line-clamp-2">{subAgent.prompt}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{subAgent.prompt}</p>
                   </div>
                   {subAgent.examples && subAgent.examples.length > 0 && (
                     <div>
                       <p className="text-sm font-medium">Exemplos:</p>
-                      <ul className="text-sm text-gray-500 list-disc list-inside">
+                      <ul className="text-sm text-muted-foreground list-disc list-inside">
                         {subAgent.examples.slice(0, 2).map((example, index) => (
                           <li key={index} className="line-clamp-1">{example}</li>
                         ))}
                         {subAgent.examples.length > 2 && (
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-muted-foreground">
                             +{subAgent.examples.length - 2} exemplos
                           </p>
                         )}

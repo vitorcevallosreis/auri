@@ -17,24 +17,24 @@ export function TopProductsTable({ services = [] }: TopServicesTableProps) {
   const servicesWithCompanyId = services.filter(s => s.company_id !== null && s.company_id !== undefined).length;
   
   return (
-    <Card className="bg-white">
+    <Card className="bg-card">
       <CardHeader>
         <CardTitle className="text-base font-medium text-muted-foreground">
           Serviços Mais Procurados
         </CardTitle>
-        <div className="text-xs text-gray-500 mt-1">
+        <div className="text-xs text-muted-foreground mt-1">
           Total: {totalServices} | Com company_id: {servicesWithCompanyId}
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {services.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">Nenhum serviço encontrado</div>
+            <div className="text-center py-4 text-muted-foreground">Nenhum serviço encontrado</div>
           ) : (services ?? []).map((service: TopService, index: number) => (
             <div key={index} className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="font-medium">ID do Serviço: {service.service_id}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   {new Date(service.created_at).toLocaleDateString('pt-BR', { 
                     day: '2-digit', 
                     month: '2-digit', 
@@ -45,7 +45,7 @@ export function TopProductsTable({ services = [] }: TopServicesTableProps) {
                 </p>
               </div>
               <div className="text-right">
-                <Badge variant="outline" className="bg-teal-50 text-[#00897B] border-teal-200">
+                <Badge variant="outline" className="bg-teal-50 text-primary border-teal-200">
                   Pesquisado
                 </Badge>
               </div>

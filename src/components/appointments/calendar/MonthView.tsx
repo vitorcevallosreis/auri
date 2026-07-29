@@ -42,8 +42,8 @@ export function MonthView({ currentDate, appointments, onAppointmentClick }: Mon
               key={i}
               className={cn(
                 "min-h-[100px] border rounded-md p-1",
-                !isCurrentMonth && "bg-gray-50 opacity-50",
-                isCurrentDay && "border-[#00897B]"
+                !isCurrentMonth && "bg-muted opacity-50",
+                isCurrentDay && "border-primary"
               )}
               onClick={() => handleDayClick(day)}
               role="button"
@@ -52,7 +52,7 @@ export function MonthView({ currentDate, appointments, onAppointmentClick }: Mon
               <div 
                 className={cn(
                   "text-right text-sm p-1 font-medium",
-                  isCurrentDay && "text-[#00897B]"
+                  isCurrentDay && "text-primary"
                 )}
                 aria-hidden="true"
               >

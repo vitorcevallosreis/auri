@@ -176,35 +176,35 @@ const PDFPreview: React.FC<PDFPreviewProps> = memo(({
         }}
       >
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-muted">
             <Loader2 className="w-6 h-6 text-primary animate-spin" />
           </div>
         )}
         
         {error && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <p className="text-sm text-gray-500">Não foi possível renderizar o PDF</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <p className="text-sm text-muted-foreground">Não foi possível renderizar o PDF</p>
           </div>
         )}
       </div>
 
-      <div className="bg-gray-200 px-4 pt-2">
-        <div className="text-gray-500 text-sm text-left" title={filename}>
+      <div className="bg-muted px-4 pt-2">
+        <div className="text-muted-foreground text-sm text-left" title={filename}>
           {filename.length > 20 ? `${filename.substring(0, 17)}...` : filename}
         </div>
         <div className="flex justify-between items-center mb-1">
-          <div className="text-gray-500 text-sm">
+          <div className="text-muted-foreground text-sm">
             {pageCount ? `${pageCount} Páginas` : '...'}
           </div>
-          <div className="text-gray-500 text-sm">
+          <div className="text-muted-foreground text-sm">
             {fileSizeMB ? `${fileSizeMB.toFixed(2)} MB` : '...'}
           </div>
-          <div className="text-gray-500 text-sm">PDF</div>
+          <div className="text-muted-foreground text-sm">PDF</div>
         </div>
 
         <div className="flex justify-between items-center">
           <div
-            className="text-gray-500 text-sm cursor-pointer"
+            className="text-muted-foreground text-sm cursor-pointer"
             onClick={handleDownload}
           >
             Baixar Arquivo

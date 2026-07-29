@@ -32,7 +32,7 @@ export default function CreateContactView({
   const { isOpen, onOpen, onOpenChange } = useDisclosure()
   return (
     <>
-      <Button onPress={onOpen} className="bg-[#00897B] hover:bg-[#007366] text-white">Cadastrar Paciente</Button>
+      <Button onPress={onOpen} className="bg-primary hover:bg-primary/90 text-primary-foreground">Cadastrar Paciente</Button>
       <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl">
         <form onSubmit={handleSubmit(onSubmit)}>
           <ModalContent>
@@ -56,11 +56,7 @@ export default function CreateContactView({
                         <SelectItem
                           key={country.key}
                           startContent={
-                            <Avatar
-                              alt="Argentina"
-                              className="w-6 h-6 rounded-full"
-                              src={country.icon}
-                            />
+                            <span className="text-lg leading-none" aria-hidden="true">{country.icon}</span>
                           }
                         >
                           {country.label}
@@ -127,7 +123,7 @@ export default function CreateContactView({
                   <Button color="danger" variant="light" onPress={onClose}>
                     Fechar
                   </Button>
-                  <Button color="primary" type="submit" className="bg-[#00897B] hover:bg-[#007366] text-white">
+                  <Button color="primary" type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                     Criar
                   </Button>
                 </ModalFooter>

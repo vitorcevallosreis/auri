@@ -213,7 +213,7 @@ const AudioMessageView = memo(function AudioMessageView({
     return (
       <div
         id={`audio-${message.id}`}
-        className={`flex items-center justify-center rounded-lg shadow-md bg-gray-100 dark:bg-gray-800 ${
+        className={`flex items-center justify-center rounded-lg shadow-md bg-muted dark:bg-gray-800 ${
           w_full ? "w-full h-20" : "w-[400px] h-20"
         }`}
       >
@@ -228,13 +228,13 @@ const AudioMessageView = memo(function AudioMessageView({
       className={`flex items-center rounded-lg shadow-md ${
         w_full ? "w-full" : "w-[400px]"
       } ${
-        message.from_me ? "bg-[#efffe5]" : "bg-white"
+        message.from_me ? "bg-[#efffe5]" : "bg-card"
       }`}
     >
       {loading && (
         <div className="p-4 flex items-center justify-center w-full">
           <Loader2 className="w-6 h-6 text-primary animate-spin mr-2" />
-          <span className="text-gray-500">Carregando áudio...</span>
+          <span className="text-muted-foreground">Carregando áudio...</span>
         </div>
       )}
       

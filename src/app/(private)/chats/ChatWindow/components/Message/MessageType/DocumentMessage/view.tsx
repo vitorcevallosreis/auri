@@ -53,7 +53,7 @@ const DocumentMessageView = memo(function DocumentMessageView({
     return (
       <div
         id={`document-${message.id}`}
-        className="w-[350px] h-[200px] bg-gray-100 dark:bg-gray-800 border border-gray-200 rounded-md shadow-sm flex items-center justify-center"
+        className="w-[350px] h-[200px] bg-muted dark:bg-gray-800 border border-border rounded-md shadow-sm flex items-center justify-center"
       >
         <Loader2 className="w-6 h-6 text-primary animate-spin" />
       </div>
@@ -63,7 +63,7 @@ const DocumentMessageView = memo(function DocumentMessageView({
   return (
     <div 
       id={`document-${message.id}`}
-      className="w-[350px] bg-white text-gray-800 border border-gray-200 rounded-md shadow-sm"
+      className="w-[350px] bg-card text-foreground border border-border rounded-md shadow-sm"
     >
       {mimeType === EnumMessageDocumentMimeType.PDF && (
         <PdfPreview

@@ -131,9 +131,9 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
         <div className="bg-teal-50 p-4 border-b">
-          <h3 className="text-base font-medium text-[#00897B] flex items-center">
+          <h3 className="text-base font-medium text-primary flex items-center">
             <Stethoscope className="mr-2 h-5 w-5" />
             Selecione o médico ou profissional
           </h3>
@@ -142,25 +142,25 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
         <div className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar médico por nome ou especialidade"
-                className="pl-10 py-6 border-gray-300 focus:border-[#00897B] focus:ring-[#00897B]"
+                className="pl-10 py-6 border-border focus:border-primary focus:ring-ring"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             
             <div className="w-full sm:w-64">
-              <Label htmlFor="specialty" className="text-sm font-medium text-gray-700 block mb-1.5">
-                <Filter className="inline-block mr-1.5 h-4 w-4 text-gray-500" />
+              <Label htmlFor="specialty" className="text-sm font-medium text-foreground block mb-1.5">
+                <Filter className="inline-block mr-1.5 h-4 w-4 text-muted-foreground" />
                 Filtrar por especialidade
               </Label>
               <Select 
                 value={selectedEspecialidade} 
                 onValueChange={setSelectedEspecialidade}
               >
-                <SelectTrigger id="specialty" className="border-gray-300 focus:border-[#00897B] focus:ring-[#00897B]">
+                <SelectTrigger id="specialty" className="border-border focus:border-primary focus:ring-ring">
                   <SelectValue placeholder="Todas as especialidades" />
                 </SelectTrigger>
                 <SelectContent>
@@ -176,14 +176,14 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
           <div className="border rounded-md overflow-hidden shadow-sm">
             {isLoading ? (
               <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00897B] mx-auto mb-4"></div>
-                <p className="text-gray-500">Carregando médicos...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Carregando médicos...</p>
               </div>
             ) : filteredProfessionals.length === 0 ? (
-              <div className="p-8 text-center bg-gray-50">
-                <Stethoscope className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-600 mb-2">Nenhum médico encontrado.</p>
-                <p className="text-sm text-gray-500">Tente outra busca ou remova os filtros aplicados.</p>
+              <div className="p-8 text-center bg-muted">
+                <Stethoscope className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground mb-2">Nenhum médico encontrado.</p>
+                <p className="text-sm text-muted-foreground">Tente outra busca ou remova os filtros aplicados.</p>
               </div>
             ) : (
               <div className="max-h-[300px] overflow-y-auto">
@@ -192,19 +192,19 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
                     <div
                       key={professional.id}
                       className={`p-4 hover:bg-teal-50 cursor-pointer transition-colors ${
-                        selectedProfessionalId === professional.id ? 'bg-teal-100 border-l-4 border-[#00897B]' : ''
+                        selectedProfessionalId === professional.id ? 'bg-teal-100 border-l-4 border-primary' : ''
                       }`}
                       onClick={() => handleProfessionalSelect(professional.id)}
                     >
                       <div className="flex items-center">
-                        <Avatar className="h-12 w-12 mr-4 border-2 border-gray-200">
-                          <AvatarFallback className="bg-teal-100 text-[#00897B] font-medium">
+                        <Avatar className="h-12 w-12 mr-4 border-2 border-border">
+                          <AvatarFallback className="bg-teal-100 text-primary font-medium">
                             {getInitials(professional.nome)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <div className="font-medium text-gray-900">{professional.nome}</div>
-                          <div className="text-sm text-gray-600 mt-1">
+                          <div className="font-medium text-foreground">{professional.nome}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
                             {professional.especialidade && (
                               <div className="flex items-center">
                                 <Stethoscope className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
@@ -212,7 +212,7 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
                               </div>
                             )}
                             {professional.formacao && (
-                              <div className="mt-0.5 text-gray-500">{professional.formacao}</div>
+                              <div className="mt-0.5 text-muted-foreground">{professional.formacao}</div>
                             )}
                           </div>
                         </div>

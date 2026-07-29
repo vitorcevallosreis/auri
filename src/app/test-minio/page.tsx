@@ -131,7 +131,7 @@ export default function TestMinioPage() {
         </button>
         
         {testResult && (
-          <div className="mt-4 p-4 bg-gray-100 rounded">
+          <div className="mt-4 p-4 bg-muted rounded">
             <h3 className="font-semibold">{testResult.success ? 'Conexão bem-sucedida' : 'Falha na conexão'}</h3>
             <p>{testResult.message}</p>
             {testResult.buckets && (
@@ -178,7 +178,7 @@ export default function TestMinioPage() {
         {audioUrl && (
           <div className="mt-4">
             <h3 className="font-semibold mb-2">Áudio enviado com sucesso:</h3>
-            <div className="p-3 bg-gray-100 rounded break-all">
+            <div className="p-3 bg-muted rounded break-all">
               <p className="mb-2">URL: {audioUrl}</p>
               <audio controls src={audioUrl} className="w-full mt-2" />
             </div>
@@ -197,12 +197,12 @@ export default function TestMinioPage() {
           {loading ? 'Enviando...' : 'Enviar para API'}
         </button>
         
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-muted-foreground mt-2">
           Primeiro faça o upload do áudio acima, depois teste o envio para a API.
         </p>
         
         {apiTestResult && (
-          <div className="mt-4 p-4 bg-gray-100 rounded">
+          <div className="mt-4 p-4 bg-muted rounded">
             <h3 className="font-semibold">{apiTestResult.success ? 'Envio bem-sucedido' : 'Falha no envio'}</h3>
             {apiTestResult.success ? (
               <div>

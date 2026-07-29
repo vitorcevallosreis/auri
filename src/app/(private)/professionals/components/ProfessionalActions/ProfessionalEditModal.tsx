@@ -460,7 +460,7 @@ export default function ProfessionalEditModal({
           <>
             <ModalHeader className="flex flex-col gap-1">
               <h2>Editar Profissional</h2>
-              <p className="text-sm text-gray-500 font-normal">
+              <p className="text-sm text-muted-foreground font-normal">
                 {professional.nome} - {professional.formacao}
               </p>
               {isLoading && (
@@ -578,7 +578,7 @@ export default function ProfessionalEditModal({
                     <div>
                       <h3 className="text-md font-medium mb-2">Convênios Aceitos</h3>
                       {companyAgreements.length === 0 ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                           <Spinner size="sm" />
                           <span>Carregando convênios...</span>
                         </div>
@@ -594,7 +594,7 @@ export default function ProfessionalEditModal({
                             </Checkbox>
                           ))}
                           {companyAgreements.length > 0 && (
-                            <div className="w-full mt-2 text-xs text-gray-500">
+                            <div className="w-full mt-2 text-xs text-muted-foreground">
                               {formData.agreements?.length || 0} convênio(s) selecionado(s)
                             </div>
                           )}
@@ -610,7 +610,7 @@ export default function ProfessionalEditModal({
                     {specialties.length === 0 ? (
                       <div className="flex flex-col items-center justify-center p-4">
                         <Spinner size="sm" color="primary" className="mb-2" />
-                        <p className="text-sm text-gray-500">Carregando especialidades...</p>
+                        <p className="text-sm text-muted-foreground">Carregando especialidades...</p>
                       </div>
                     ) : (
                       <>
@@ -650,7 +650,7 @@ export default function ProfessionalEditModal({
                     {services.length === 0 ? (
                       <div className="flex flex-col items-center justify-center p-4">
                         <Spinner size="sm" color="primary" className="mb-2" />
-                        <p className="text-sm text-gray-500">Carregando serviços...</p>
+                        <p className="text-sm text-muted-foreground">Carregando serviços...</p>
                       </div>
                     ) : (
                       <>
@@ -759,7 +759,7 @@ export default function ProfessionalEditModal({
                               <div className="space-y-1">
                                 <label className="text-sm font-medium">Abertura</label>
                                 <div className="flex items-center space-x-2">
-                                  <Clock size={16} className="text-gray-400" />
+                                  <Clock size={16} className="text-muted-foreground" />
                                   <Input
                                     type="time"
                                     value={formData.scheduler?.[day.id]?.opening || ""}
@@ -772,7 +772,7 @@ export default function ProfessionalEditModal({
                               <div className="space-y-1">
                                 <label className="text-sm font-medium">Fechamento</label>
                                 <div className="flex items-center space-x-2">
-                                  <Clock size={16} className="text-gray-400" />
+                                  <Clock size={16} className="text-muted-foreground" />
                                   <Input
                                     type="time"
                                     value={formData.scheduler?.[day.id]?.closing || ""}

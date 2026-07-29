@@ -1,54 +1,93 @@
-@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@100;200;300;400;500;600;700;800;900&family=SF+Pro+Text:wght@100;200;300;400;500;600;700;800;900&display=swap');
+/* A fonte é carregada por next/font em src/app/layout.tsx (Hanken Grotesk) e
+   exposta como --font-sans. Aqui havia um @import pedindo "SF Pro Display" ao
+   Google Fonts — família que não existe lá (é da Apple), então a requisição
+   sempre falhou silenciosamente. Removido. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* ------------------------------------------------------------------
+     Paleta da marca Auri (Plataforma de Marca, p48) — regra 60/30/10.
+       Dominante  60%  #11282C  hsl(189 44% 12%)   estrutura, texto, botões
+       Secund. 01 30%  #9EA9B7  hsl(214 15% 67%)   apoio / texto secundário
+       Secund. 02      #DEDEDE  hsl(0 0% 87%)      bordas e divisores
+       Destaque   10%  #68E2A5  hsl(150 68% 65%)   realce, estados ativos
+       "Branco"        #F0F0F0  hsl(0 0% 94%)      fundo de página
+       "Preto"         #0E0D0D  hsl(0 0% 5%)
+
+     ACESSIBILIDADE — dois pontos medidos, não estimados:
+     1. O menta #68E2A5 é claro: texto BRANCO sobre ele dá 1,6:1 (reprova).
+        Por isso --accent-foreground é o petróleo #11282C, que dá 9,54:1.
+     2. O cinza da marca #9EA9B7 como texto em fundo claro dá 2,38:1
+        (reprova). No tema claro usamos o mesmo matiz escurecido para 46%
+        de luminosidade (4,83:1); no tema escuro a cor original é usada
+        como veio da marca, onde rende 7,47:1.
+     ------------------------------------------------------------------ */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: 0 0% 94%; /* #F0F0F0 */
+    --foreground: 189 44% 12%; /* #11282C */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 189 44% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    /* Branding teal */
-    --primary: 174 100% 27%; /* #00897B */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 177 41% 91%; /* #E0F2F1 */
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 175 41% 79%; /* #B2DFDB */
-    --input: 175 41% 79%; /* #B2DFDB */
-    --ring: 174 100% 27%; /* #00897B */
+    --popover-foreground: 189 44% 12%;
+    /* Dominante: superfícies de marca e ações primárias (texto branco, 15,4:1) */
+    --primary: 189 44% 12%; /* #11282C */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 87%; /* #DEDEDE */
+    --secondary-foreground: 189 44% 12%;
+    --muted: 0 0% 91%;
+    /* Matiz do cinza da marca, escurecido até passar AA nos TRÊS fundos claros
+       que existem na tela — página (#F0F0F0), card (#FFFFFF) e muted (91%).
+       Em 46% passava só sobre o card (4,83:1) e reprovava sobre a página
+       (4,24:1); 42% dá 4,91 / 5,60 / 4,57. */
+    --muted-foreground: 214 15% 42%;
+    /* Destaque (10%): realces e estados ativos — SEMPRE com texto escuro */
+    --accent: 150 68% 65%; /* #68E2A5 */
+    --accent-foreground: 189 44% 12%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 87%; /* #DEDEDE */
+    --input: 0 0% 87%;
+    --ring: 150 68% 65%;
     --radius: 0.5rem;
+
+    /* Superfície de MARCA — deliberadamente NÃO inverte com o tema.
+       `primary` troca de cor entre claro/escuro (petróleo ↔ menta), o que é
+       certo para botões mas errado para uma peça de marca: o painel do login
+       viraria um bloco menta gigante no tema escuro. Estes tokens são sempre
+       o dominante da paleta. */
+    --brand: 189 44% 12%; /* #11282C */
+    --brand-foreground: 0 0% 94%; /* #F0F0F0 */
   }
 
   .dark {
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 13.5%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 47.4% 11.2%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 174 100% 40%; /* teal mais claro para contraste no dark */
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 174 35% 22%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 174 100% 40%;
+    --background: 189 44% 8%;
+    --foreground: 0 0% 94%; /* #F0F0F0 */
+    --card: 189 44% 12%; /* #11282C */
+    --card-foreground: 0 0% 94%;
+    --popover: 189 44% 12%;
+    --popover-foreground: 0 0% 94%;
+    /* No escuro o petróleo vira o próprio fundo, então a ação primária
+       passa a ser o menta — com texto petróleo (9,54:1). */
+    --primary: 150 68% 65%; /* #68E2A5 */
+    --primary-foreground: 189 44% 12%;
+    --secondary: 189 30% 18%;
+    --secondary-foreground: 0 0% 94%;
+    --muted: 189 30% 18%;
+    --muted-foreground: 214 15% 67%; /* #9EA9B7 da marca — 7,47:1 aqui */
+    --accent: 150 68% 65%;
+    --accent-foreground: 189 44% 12%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 189 30% 20%;
+    --input: 189 30% 20%;
+    --ring: 150 68% 65%;
+
+    /* Mesmos valores do tema claro, de propósito: marca não inverte. */
+    --brand: 189 44% 12%;
+    --brand-foreground: 0 0% 94%;
   }
 }
 
@@ -61,6 +100,47 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+
+  /* ------------------------------------------------------------------
+     Escala tipográfica da marca (Plataforma de Marca, p51-52).
+       H1 32-48pt · H2 24-32pt · H3 18-24pt · corpo 12-16pt
+       botões/links 14-18pt · entrelinha 120-150%
+     O manual orienta usar o TOPO de cada faixa em telas.
+
+     Estes são padrões de base: valem onde o componente não define um tamanho
+     próprio. As telas existentes já usam classes Tailwind explícitas que caem
+     dentro das faixas (corpo 16px, entrelinha 150%), então não foram
+     reescritas — isso aqui garante que código novo nasça conforme.
+
+     Peso 600 nos títulos = o "Demi Bold" da marca.
+     ------------------------------------------------------------------ */
+  /* Autofill do Chrome.
+     Ao preencher automaticamente, o Chrome aplica um fundo azulado próprio
+     (`rgba(70,90,126,.4)`) que ignora `background-color` — o campo saía da
+     paleta toda vez que o usuário voltava à tela de login. O box-shadow
+     interno é a única forma de sobrescrever, e `-webkit-text-fill-color`
+     corrige a cor do texto junto. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  h1 {
+    @apply text-[2rem] font-semibold leading-[1.2];
+  }
+  h2 {
+    @apply text-2xl font-semibold leading-[1.25];
+  }
+  h3 {
+    @apply text-lg font-semibold leading-[1.3];
   }
 }
 
@@ -162,7 +242,7 @@
 }
 
 .chat-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #00897B !important;
+  background-color: hsl(var(--primary)) !important;
   border-radius: 8px !important;
   border: 3px solid transparent !important;
   background-clip: content-box !important;
@@ -172,13 +252,13 @@
 }
 
 .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #00796B !important;
+  background-color: hsl(var(--primary) / 0.8) !important;
 }
 
 /* Firefox */
 .chat-scrollbar {
   scrollbar-width: auto !important;
-  scrollbar-color: #00897B rgba(0, 0, 0, 0.05) !important;
+  scrollbar-color: hsl(var(--primary)) rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Tema escuro */

@@ -164,8 +164,8 @@ export default function ChatSendMessageView({
 
                     <div className="mt-4">
                       {files.length > 0 && (
-                        <div className="border rounded-lg p-4 bg-gray-50 shadow-md">
-                          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                        <div className="border rounded-lg p-4 bg-muted shadow-md">
+                          <h3 className="text-lg font-semibold text-foreground mb-2">
                             Arquivos Selecionados
                           </h3>
                           <ul className="space-y-2">
@@ -177,14 +177,14 @@ export default function ChatSendMessageView({
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, x: -20 }}
                                   transition={{ duration: 0.3 }}
-                                  className="flex flex-col gap-2 p-2 border rounded-lg bg-white shadow-sm"
+                                  className="flex flex-col gap-2 p-2 border rounded-lg bg-card shadow-sm"
                                 >
                                   <div className="flex justify-between items-center">
                                     <div>
-                                      <span className="text-gray-800 text-sm font-medium">
+                                      <span className="text-foreground text-sm font-medium">
                                         {file.name}
                                       </span>
-                                      <span className="text-gray-500 text-xs ml-2">
+                                      <span className="text-muted-foreground text-xs ml-2">
                                         ({(file.size / 1024).toFixed(2)} KB)
                                       </span>
                                     </div>
@@ -279,7 +279,7 @@ export default function ChatSendMessageView({
                 <Button 
                   isIconOnly 
                   onPress={() => handleFormatText(style)}
-                  className="transition-all duration-200 hover:bg-gray-100 active:scale-95"
+                  className="transition-all duration-200 hover:bg-muted active:scale-95"
                 >
                   {style === "bold" && <Bold width={15} height={15} />}
                   {style === "italic" && <Italic width={15} height={15} />}

@@ -119,7 +119,7 @@ export function AppointmentCard({
   // Default variant (used in day and agenda views)
   return (
     <div 
-      className="bg-white rounded-lg border border-gray-100 shadow-sm cursor-pointer transition-all hover:shadow-md w-full"
+      className="bg-card rounded-lg border border-border shadow-sm cursor-pointer transition-all hover:shadow-md w-full"
       onClick={handleClick}
       role="button"
       aria-label={`Agendamento de ${appointment.cliente_nome || "Cliente não informado"}`}
@@ -128,7 +128,7 @@ export function AppointmentCard({
         <div className="flex justify-between items-center mb-2">
           <div>
             <h3 className="font-medium text-base">{appointment.cliente_nome || "Cliente não informado"}</h3>
-            <p className="text-sm text-gray-600">{appointment.service_name}</p>
+            <p className="text-sm text-muted-foreground">{appointment.service_name}</p>
           </div>
           <Badge 
             className={cn(
@@ -148,12 +148,12 @@ export function AppointmentCard({
         
         <div className="flex items-center mt-3">
           <Clock className="h-4 w-4 text-teal-500 mr-2" aria-hidden="true" />
-          <span className="text-sm font-medium text-gray-700">{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+          <span className="text-sm font-medium text-foreground">{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
         </div>
         
         <div className="flex items-center mt-2">
-          <User className="h-4 w-4 text-gray-400 mr-2" aria-hidden="true" />
-          <span className="text-sm text-gray-600">{appointment.professional_name}</span>
+          <User className="h-4 w-4 text-muted-foreground mr-2" aria-hidden="true" />
+          <span className="text-sm text-muted-foreground">{appointment.professional_name}</span>
         </div>
       </div>
     </div>

@@ -392,7 +392,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
             <div className="bg-blue-50 p-4 border-b">
               <h3 className="text-base font-medium text-blue-700 flex items-center">
                 <CalendarIcon className="mr-2 h-5 w-5" />
@@ -405,7 +405,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
                 <div className="flex justify-between items-center">
                   <button 
                     type="button"
-                    className="p-2 rounded-md border hover:bg-gray-50"
+                    className="p-2 rounded-md border hover:bg-muted"
                     onClick={() => {
                       const newDate = new Date();
                       newDate.setMonth(new Date().getMonth() - 1);
@@ -419,7 +419,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
                   </h3>
                   <button 
                     type="button"
-                    className="p-2 rounded-md border hover:bg-gray-50"
+                    className="p-2 rounded-md border hover:bg-muted"
                     onClick={() => {
                       const newDate = new Date(currentMonth);
                       newDate.setMonth(newDate.getMonth() + 1);
@@ -434,7 +434,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
                 <div className="grid grid-cols-7 gap-1">
                   {/* Cabeçalho com dias da semana */}
                   {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
-                    <div key={index} className="text-center text-gray-500 text-sm py-1">
+                    <div key={index} className="text-center text-muted-foreground text-sm py-1">
                       {day}
                     </div>
                   ))}
@@ -480,7 +480,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
         </div>
         
         <div>
-          <div className="bg-white rounded-lg border shadow-sm overflow-hidden h-full">
+          <div className="bg-card rounded-lg border shadow-sm overflow-hidden h-full">
             <div className="bg-blue-50 p-4 border-b">
               <h3 className="text-base font-medium text-blue-700 flex items-center">
                 <Clock className="mr-2 h-5 w-5" />
@@ -491,15 +491,15 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
               {isLoading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Carregando horários disponíveis...</p>
+                  <p className="text-muted-foreground">Carregando horários disponíveis...</p>
                 </div>
               ) : timeSlots.length === 0 ? (
                 <div className="p-8 text-center">
-                  <div className="text-gray-400 mb-3">
+                  <div className="text-muted-foreground mb-3">
                     <Clock className="h-12 w-12 mx-auto opacity-30" />
                   </div>
-                  <p className="text-gray-500 mb-1">Nenhum horário disponível para esta data.</p>
-                  <p className="text-sm text-gray-400">Tente selecionar outra data.</p>
+                  <p className="text-muted-foreground mb-1">Nenhum horário disponível para esta data.</p>
+                  <p className="text-sm text-muted-foreground">Tente selecionar outra data.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
@@ -512,14 +512,14 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
                           ? selectedTimeSlot?.startTime === slot.startTime
                             ? "bg-blue-100 border-blue-400 text-blue-800 shadow-sm ring-2 ring-blue-300 ring-opacity-50"
                             : "hover:bg-blue-50 hover:border-blue-200"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-muted text-muted-foreground cursor-not-allowed"
                       )}
                       onClick={() => slot.isAvailable && handleTimeSlotSelect(slot)}
                     >
                       <div className="flex items-center justify-center">
                         <Clock className={cn(
                           "h-4 w-4 mr-2",
-                          selectedTimeSlot?.startTime === slot.startTime ? "text-blue-600" : "text-gray-500"
+                          selectedTimeSlot?.startTime === slot.startTime ? "text-blue-600" : "text-muted-foreground"
                         )} />
                         <span className="font-medium">
                           {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
@@ -544,7 +544,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
             Atenção: Conflitos de horário detectados
           </h4>
           <p className="text-sm text-red-600 mb-3">Os seguintes horários não estão disponíveis devido a outros agendamentos:</p>
-          <div className="bg-white p-3 rounded-md border border-red-100 mb-3">
+          <div className="bg-card p-3 rounded-md border border-red-100 mb-3">
             <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
               {formData.dateTimeConflicts.map((conflito, index) => (
                 <li key={index} className="py-1">

@@ -57,19 +57,34 @@ export function InteractionsChart({
   // Ensure data is always an array
   const safeData = Array.isArray(data) ? data : [];
   const isDark = mounted && theme === 'dark';
-  
+
+  // O Chart.js pinta em <canvas>, onde `hsl(var(--primary))` NÃO resolve — o
+  // canvas não participa da cascata do CSS. Então lemos o valor cru do token
+  // ("189 44% 12%") e montamos a cor aqui. Assim o gráfico continua preso ao
+  // design system (inclusive na troca de tema) em vez de ter a cor chumbada.
+  const brand = (alpha?: number) => {
+    const fallback = '189 44% 12%'; // #11282C — usado no SSR, antes de montar
+    const hsl =
+      mounted && typeof window !== 'undefined'
+        ? getComputedStyle(document.documentElement)
+            .getPropertyValue('--primary')
+            .trim() || fallback
+        : fallback;
+    return alpha === undefined ? `hsl(${hsl})` : `hsl(${hsl} / ${alpha})`;
+  };
+
   const chartData = {
     labels,
     datasets: [
       {
         label: title,
         data: safeData,
-        borderColor: "#00897B",
-        backgroundColor: fillArea 
-          ? isDark ? "rgba(0, 137, 123, 0.2)" : "rgba(0, 137, 123, 0.1)" 
-          : type === 'bar' 
-            ? "#00897B" 
-            : isDark ? "rgba(0, 137, 123, 0.2)" : "rgba(0, 137, 123, 0.1)",
+        borderColor: brand(),
+        backgroundColor: fillArea
+          ? brand(isDark ? 0.2 : 0.1)
+          : type === 'bar'
+            ? brand()
+            : brand(isDark ? 0.2 : 0.1),
         tension: 0.4,
         fill: fillArea,
         borderWidth: type === 'line' ? 2 : 0,

@@ -68,15 +68,15 @@ export default function TestimonialsSection() {
     <div className="space-y-6">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Quote className="h-5 w-5 text-[#00897B]" />
-          <Badge className="bg-[#E0F2F1] text-[#00897B] hover:bg-[#B2DFDB]">
+          <Quote className="h-5 w-5 text-primary" />
+          <Badge className="bg-accent/20 text-foreground hover:bg-accent/30">
             Cases de Sucesso
           </Badge>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">
-          O que médicos de Divinópolis falam sobre a Nexa
+        <h2 className="text-2xl font-bold text-foreground">
+          O que médicos de Divinópolis falam sobre a Auri
         </h2>
-        <p className="text-gray-600 max-w-2xl mx-auto">
+        <p className="text-muted-foreground max-w-2xl mx-auto">
           Clínicas locais que já automatizaram seus atendimentos e transformaram seus resultados
         </p>
       </div>
@@ -85,7 +85,7 @@ export default function TestimonialsSection() {
         {testimonials.map((testimonial) => (
           <Card key={testimonial.id} className="relative border-2 hover:shadow-lg transition-all duration-200 overflow-hidden">
             {/* Quote decoration */}
-            <div className="absolute top-4 right-4 text-[#00897B]/10">
+            <div className="absolute top-4 right-4 text-primary/10">
               <Quote className="h-8 w-8" />
             </div>
             
@@ -96,12 +96,12 @@ export default function TestimonialsSection() {
                   src={testimonial.avatar}
                   size="md"
                   showFallback
-                  className="border-2 border-[#00897B]/20"
+                  className="border-2 border-primary/20"
                 />
                 <div className="flex-1 space-y-1">
-                  <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                  <div className="text-sm text-gray-600">{testimonial.role}</div>
-                  <div className="text-xs text-gray-500 flex items-center gap-1">
+                  <div className="font-semibold text-foreground">{testimonial.name}</div>
+                  <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     {testimonial.location}
                   </div>
@@ -114,33 +114,33 @@ export default function TestimonialsSection() {
               </div>
 
               {/* Clinic info */}
-              <div className="flex items-center justify-between text-xs bg-gray-50 rounded-lg p-2">
+              <div className="flex items-center justify-between text-xs bg-muted rounded-lg p-2">
                 <div className="flex items-center gap-1">
                   <span className="font-medium">{testimonial.clinic}</span>
                 </div>
-                <div className="flex items-center gap-1 text-gray-500">
+                <div className="flex items-center gap-1 text-muted-foreground">
                   <Users className="h-3 w-3" />
                   {testimonial.patients}
                 </div>
               </div>
 
               {/* Quote */}
-              <blockquote className="text-sm text-gray-700 leading-relaxed italic">
+              <blockquote className="text-sm text-foreground leading-relaxed italic">
                 "{testimonial.quote}"
               </blockquote>
 
               {/* Results badges */}
               <div className="flex flex-wrap gap-2">
                 {testimonial.results.map((result, index) => (
-                  <Badge key={index} variant="outline" className="text-xs border-[#00897B]/20 text-[#00897B]">
+                  <Badge key={index} variant="outline" className="text-xs border-primary/20 text-primary">
                     {result}
                   </Badge>
                 ))}
               </div>
 
               {/* Time using */}
-              <div className="pt-2 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
+              <div className="pt-2 border-t border-border">
+                <div className="text-xs text-muted-foreground">
                   <span className="font-medium">Usando há:</span> {testimonial.timeUsing}
                 </div>
               </div>
@@ -151,10 +151,10 @@ export default function TestimonialsSection() {
 
       {/* CTA bottom */}
       <div className="text-center pt-4">
-        <p className="text-sm text-gray-600 mb-4">
-          Mais de <span className="font-semibold text-[#00897B]">50 clínicas em MG</span> já automatizaram com a Nexa
+        <p className="text-sm text-muted-foreground mb-4">
+          Mais de <span className="font-semibold text-primary">50 clínicas em MG</span> já automatizaram com a Auri
         </p>
-        <Badge className="bg-[#00897B] hover:bg-[#00796B] text-white px-6 py-2">
+        <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2">
           Seja o próximo case de sucesso
         </Badge>
       </div>

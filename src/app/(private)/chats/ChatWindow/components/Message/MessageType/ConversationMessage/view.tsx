@@ -15,8 +15,8 @@ export default function ConversationMessageView({
       className={`${
         w_full ? "w-full" : "max-w-sm"
       } ${
-        message.from_me ? "bg-[#efffe5]" : "bg-white"
-      } text-gray-800 border border-gray-200 rounded-md p-2 shadow-sm`}
+        message.from_me ? "bg-[#efffe5]" : "bg-card"
+      } text-foreground border border-border rounded-md p-2 shadow-sm`}
     >
       <div className="text-md break-words">{messageText}</div>
 

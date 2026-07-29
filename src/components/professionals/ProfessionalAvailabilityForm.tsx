@@ -182,7 +182,7 @@ export function ProfessionalAvailabilityForm({
                               onChange={(e) => handleMaxClientsChange(key, e.target.value)}
                               className="w-full"
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               Número máximo de clientes que podem ser agendados no mesmo horário
                             </p>
                           </div>

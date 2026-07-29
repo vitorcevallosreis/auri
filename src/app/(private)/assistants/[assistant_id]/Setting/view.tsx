@@ -4,7 +4,6 @@ import React from "react"
 import useSettingModel from "./model"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { text_ligth } from "@/hooks/useFonts"
 import { Button } from "@nextui-org/react"
 import { Select, SelectItem, Avatar } from "@nextui-org/react"
 import { SectionTitle, SubsectionTitle } from "@/components/ui/section-title"
@@ -48,7 +47,7 @@ export default function SettingView({
 
         <div>
           <SubsectionTitle>Objetivo do Assistente</SubsectionTitle>
-          <div className={`${text_ligth} text-sm mb-2`}>
+          <div className={`font-light text-sm mb-2`}>
             Descreva um pouco sobre como o assistente deve se comportar e qual
             seu objetivo durante a conversa.
           </div>
@@ -61,7 +60,7 @@ export default function SettingView({
 
         <div>
           <SubsectionTitle>Estratégia do Assistente</SubsectionTitle>
-          <div className={`${text_ligth} text-sm mb-2`}>
+          <div className={`font-light text-sm mb-2`}>
             Descreva a estratégia utilizada pelo bot para realizar suas funções
           </div>
 
@@ -73,7 +72,7 @@ export default function SettingView({
 
         <div>
           <SubsectionTitle>Telefone de Fallback</SubsectionTitle>
-          <div className={`${text_ligth} text-sm mb-2`}>
+          <div className={`font-light text-sm mb-2`}>
             Número de telefone para redirecionamento caso o agente tenha problemas
           </div>
 

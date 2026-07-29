@@ -54,7 +54,10 @@ export function middleware(request: NextRequest) {
   ) {
     const redirect_url = request.nextUrl.clone()
 
-    redirect_url.pathname = "/dashboard"
+    // "/" é o painel real (dentro do (private)/layout, com sidebar). A rota
+    // "/dashboard" é uma página legada órfã — mandar para lá deixava o usuário
+    // numa tela sem menu e com dados fictícios.
+    redirect_url.pathname = "/"
 
     return NextResponse.redirect(redirect_url)
   }

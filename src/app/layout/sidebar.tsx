@@ -35,6 +35,7 @@ import {
   ClipboardList,
 } from "lucide-react"
 import { AuthContext } from "@/contexts/Auth"
+import { AuriIcon, AuriLogo } from "@/components/brand/auri-logo"
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -87,11 +88,25 @@ const SidebarButton = ({
   <Tooltip>
     <TooltipTrigger asChild>
       <Button
-        variant={isActive ? "secondary" : "ghost"}
+        variant="ghost"
         className={cn(
-          "w-full justify-start gap-4 px-2 py-4",
+          "relative w-full justify-start gap-4 px-2 py-4",
           isCollapsed && "justify-center px-2",
-          highlight && "bg-primary/10 hover:bg-primary/20"
+          // Item em destaque (menta bem diluído, para não competir com o ativo)
+          highlight && !isActive && "bg-accent/15 hover:bg-accent/25",
+          // Estado ativo: o menta da marca entra como FUNDO tingido com texto
+          // petróleo por cima. Menta como cor de texto/traço em fundo claro dá
+          // 1,6:1 e some — por isso ele é fundo, nunca traço.
+          isActive && [
+            // text-foreground, NÃO text-primary: no tema escuro o --primary é o
+            // próprio menta, o que deixaria texto menta sobre fundo menta (1:1).
+            // O foreground inverte com o tema e funciona nos dois.
+            "bg-accent/25 hover:bg-accent/35 font-medium text-foreground",
+            // Barra sólida à esquerda: aqui o menta pode ser cheio, por ser
+            // elemento decorativo (não carrega texto).
+            "before:absolute before:left-0 before:top-1/2 before:h-6 before:w-1",
+            "before:-translate-y-1/2 before:rounded-r before:bg-accent",
+          ]
         )}
         onClick={onClick}
       >
@@ -148,14 +163,18 @@ export function Sidebar({
     >
       <div className="flex h-12 items-center justify-between gap-2 border-b px-2">
         <Link
-          href="/dashboard"
+          href="/"
           className={cn(
             "flex items-center gap-2",
             isCollapsed && "justify-center"
           )}
         >
-          <Bot className="h-6 w-6 text-[#00897B]" />
-          {!isCollapsed && <span className="font-bold text-lg text-[#00897B]">Nexa</span>}
+          {/* O lockup já contém o wordmark "Auri"; recolhido, só o símbolo. */}
+          {isCollapsed ? (
+            <AuriIcon className="h-6 w-6" />
+          ) : (
+            <AuriLogo className="h-6 text-foreground" />
+          )}
         </Link>
         <Button
           variant="ghost"
@@ -193,7 +212,7 @@ export function Sidebar({
             {/* Menu sistema - parte inferior */}
             <div>
               {/* Divider */}
-              {!isCollapsed && <div className="border-t border-gray-200 my-2" />}
+              {!isCollapsed && <div className="border-t border-border my-2" />}
               <div className="flex flex-col gap-0.5 mt-1">
                 {/* Configurações */}
                 {systemMenuItems.map((item: MenuItem) => (
@@ -221,7 +240,7 @@ export function Sidebar({
                 {/* Sair */}
                 <SidebarButton
                   title="Sair"
-                  icon={<DoorClosed className="h-4 w-4 text-gray-400" />}
+                  icon={<DoorClosed className="h-4 w-4 text-muted-foreground" />}
                   route="#"
                   isCollapsed={isCollapsed}
                   isActive={false}

@@ -14,6 +14,7 @@ import { AdditionalOptionsStep } from './steps/AdditionalOptionsStep';
 import { ConfirmationStep } from './steps/ConfirmationStep';
 import { Appointment, AppointmentStatus, AppointmentType } from '@/contexts/Appointments/interfaces';
 import { useAppointments } from '@/contexts/Appointments';
+import { supabase } from '@/lib/supabase/config';
 import { AuthContext } from '@/contexts/Auth';
 import { StepIndicator } from './StepIndicator';
 
@@ -280,176 +281,75 @@ export const MultiStepAppointmentForm: React.FC<MultiStepAppointmentFormProps> =
         temp_id: tempAppointmentId // ID temporário para associar arquivos
       };
 
-      // Preparar os dados para o webhook independentemente do resultado do banco
-      const webhookData = {
-        company_id: user?.company_id || null, // Adicionando company_id para o webhook
-        professional_id: formData.professional.id,
-        professional_name: formData.professional.name,
-        service_id: formData.service.id,
-        service_name: formData.service.name,
-        service_duration: formData.service.duration,
-        service_price: formData.details.price || 0,
-        client_id: formData.client.id || null,
-        client_name: formData.client.name,
-        client_phone: formData.client.phone || null,
-        client_email: formData.client.email || null,
-        appointment_date: formData.dateTime.date ? formData.dateTime.date.toISOString().split('T')[0] : '',
-        start_time: formData.dateTime.startTime,
-        end_time: formData.dateTime.endTime,
-        status: formData.details.status || 'scheduled',
-        notes: formData.notes || '',
-        location: formData.details.location || '',
-        appointment_type: formData.details.appointmentType || 'in-person',
-        service_modality: formData.details.appointmentType || 'individual', // Tipo de serviço: individual ou grupo
-        participants_count: formData.details.participantsCount || 1, // Quantidade de participantes (para serviços em grupo)
-        insurance: formData.details.insurance || null, // Convênio utilizado
-        price: formData.details.price || 0, // Valor do serviço
-        send_notification: formData.additionalOptions?.sendNotification || true,
-        is_recurring: formData.additionalOptions?.isRecurring || false,
-        recurrence_type: formData.additionalOptions?.isRecurring ? formData.additionalOptions.recurrenceType : null,
-        sessions_count: formData.additionalOptions?.isRecurring && formData.additionalOptions.recurrenceType === 'sessions' ? formData.additionalOptions.sessionsCount : null,
-        end_date: formData.additionalOptions?.isRecurring && formData.additionalOptions.recurrenceType === 'date' && formData.additionalOptions.endDate ? formData.additionalOptions.endDate.toISOString().split('T')[0] : null,
-        has_attachments: false,
-        temp_id: tempAppointmentId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
       
-      // Enviar para o webhook
-      console.log('Enviando dados para o webhook:', webhookData);
-      
-      const webhookResponse = await fetch('https://webhooks.sejanexa.com.br/webhook/created-schedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(webhookData)
-      });
-      
-      // Processar a resposta do webhook
-      const responseData = await webhookResponse.json();
-      
-      // Verificar se há conflitos de horário
-      if (!webhookResponse.ok || (responseData && responseData.status === false)) {
-        // Se houver conflitos, exibir mensagem para o usuário
-        if (responseData && responseData.conflitos && responseData.conflitos.length > 0) {
-          // Verificar se a resposta contém conflitos válidos
-          if (!Array.isArray(responseData.conflitos) || responseData.conflitos.length === 0) {
-            console.error('Resposta de conflito inválida:', responseData);
-            toast({
-              title: "Erro ao processar conflitos de horário",
-              description: "Ocorreu um erro ao processar os conflitos de horário. Por favor, tente novamente.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          // Formatar os conflitos para exibição
-          const conflitosFormatados = responseData.conflitos.map((conflito: any) => {
-            try {
-              // Formatar a data para o formato brasileiro
-              // Corrigir o problema de fuso horário adicionando o T00:00:00 e tratando como data local
-              const dataStr = conflito.data.includes('T') ? conflito.data : `${conflito.data}T00:00:00`;
-              
-              // Extrair os componentes da data diretamente da string para evitar problemas de fuso horário
-              const [ano, mes, dia] = dataStr.split('T')[0].split('-').map(Number);
-              
-              if (!ano || !mes || !dia || isNaN(ano) || isNaN(mes) || isNaN(dia)) {
-                throw new Error(`Data inválida: ${conflito.data}`);
-              }
-              
-              // Formatar a data manualmente para garantir que não há problemas de fuso horário
-              const dataFormatada = `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
-              
-              // Formatar os horários (remover os segundos)
-              const horaInicio = conflito.start_time ? conflito.start_time.substring(0, 5) : '00:00';
-              const horaFim = conflito.end_time ? conflito.end_time.substring(0, 5) : '00:00';
-              
-              return { dataFormatada, horaInicio, horaFim };
-            } catch (error) {
-              console.error('Erro ao formatar conflito:', error, conflito);
-              return { 
-                dataFormatada: 'Data inválida', 
-                horaInicio: conflito.start_time || '00:00', 
-                horaFim: conflito.end_time || '00:00' 
-              };
-            }
-          });
-          
-          // Exibir toast com os conflitos
-          toast({
-            title: "Conflito de horários detectado",
-            description: (
-              <div className="space-y-2">
-                <p className="font-medium text-red-800">{responseData.message || "Existem conflitos de horário na sua solicitação."}</p>
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
-                  <p className="font-medium text-red-800 mb-2">Horários com conflito:</p>
-                  <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
-                    {conflitosFormatados.map((conflito: { dataFormatada: string; horaInicio: string; horaFim: string }, index: number) => (
-                      <li key={index}>
-                        <span className="font-medium">{conflito.dataFormatada}</span> das <span className="font-medium">{conflito.horaInicio}</span> às <span className="font-medium">{conflito.horaFim}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-3 text-sm font-medium text-red-700">Por favor, selecione outro horário ou data para o agendamento.</p>
-                </div>
-              </div>
-            ),
-            variant: "destructive",
-            duration: 15000, // Aumentar a duração para dar tempo de ler
-          });
-          
-          // Criar um alerta visual na etapa de data/hora
-          const dateTimeStepIndex = steps.findIndex(step => step.title === 'Data e Hora');
-          if (dateTimeStepIndex !== -1) {
-            // Adicionar uma mensagem de alerta ao estado do formulário
-            // Garantir que os conflitos formatados sejam válidos
-            if (conflitosFormatados && conflitosFormatados.length > 0) {
-              // Usar um setTimeout para garantir que a atualização do estado ocorra após a renderização atual
-              setTimeout(() => {
-                updateFormData({
-                  dateTimeConflicts: [...conflitosFormatados]
-                });
-              }, 0);
-            }
-            
-            // Voltar para a etapa de seleção de data/hora
-            setCurrentStep(dateTimeStepIndex);
-            
-            // Mostrar um alerta adicional para garantir que o usuário entenda o que aconteceu
-            setTimeout(() => {
-              toast({
-                title: "Selecione uma nova data ou horário",
-                description: "Você foi redirecionado para a etapa de seleção de data e hora para escolher um novo horário disponível.",
-                variant: "default",
-                duration: 5000,
-              });
-            }, 1000); // Pequeno atraso para garantir que o usuário veja esta mensagem após a primeira
-          }
-        } else {
-          // Se não houver detalhes de conflitos, mostrar mensagem genérica de erro
-          console.error('Falha ao notificar o servidor de agendamentos:', webhookResponse.status, responseData);
-          toast({
-            title: "Erro ao realizar agendamento",
-            description: responseData.message || "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Sucesso - agendamento realizado
-        console.log('Webhook notificado com sucesso!');
-        
-        // Mostrar feedback de sucesso para o usuário
+      // O fluxo antigo delegava a gravação E a checagem de conflito a um
+      // webhook do n8n (webhooks.sejanexa.com.br). Esse host não responde mais
+      // (o DNS resolve, o TCP não conecta), então o `await fetch` estourava e o
+      // agendamento NUNCA era criado — o formulário só sabia falhar. Pior:
+      // `createAppointment` já estava importado e o payload já vinha montado,
+      // mas a função nunca era chamada.
+      //
+      // A checagem de conflito cobre o caso objetivo: mesmo profissional, mesma
+      // data, faixas de horário que se sobrepõem, ignorando cancelados. Regras
+      // mais ricas que o n8n possa ter tido (bloqueios de agenda, feriados,
+      // intervalos entre consultas) NÃO foram reconstruídas — não há como
+      // inferi-las a partir do código que sobrou.
+      const { data: conflitos, error: erroConflito } = await supabase
+        .from("myia_appointments")
+        .select("id, start_time, end_time, cliente_nome")
+        .eq("professional_id", appointmentData.professional_id)
+        .eq("appointment_date", appointmentData.appointment_date)
+        .neq("status", "cancelled")
+        .lt("start_time", appointmentData.end_time)
+        .gt("end_time", appointmentData.start_time);
+
+      if (erroConflito) {
+        console.error("Falha ao verificar conflitos de horário:", erroConflito);
         toast({
-          title: "Agendamento realizado com sucesso!",
-          description: "Os detalhes foram enviados para processamento.",
-          variant: "default",
+          title: "Não foi possível verificar a agenda",
+          description: "Tente novamente em instantes.",
+          variant: "destructive",
         });
-        
-        onClose();
+        return;
       }
+
+      if (conflitos && conflitos.length > 0) {
+        const lista = conflitos
+          .map((c: any) => `${c.start_time?.slice(0, 5)}–${c.end_time?.slice(0, 5)}${c.cliente_nome ? ` (${c.cliente_nome})` : ""}`)
+          .join(", ");
+        toast({
+          title: "Conflito de horário",
+          description: `Este profissional já tem agendamento neste intervalo: ${lista}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // `temp_id` NÃO existe em myia_appointments (ver migration 0006) — era um
+      // campo só do payload do n8n, para associar anexos. Mandá-lo no insert
+      // faria o PostgREST rejeitar a linha inteira.
+      const { temp_id: _tempId, ...dadosParaBanco } = appointmentData;
+
+      const criado = await createAppointment(dadosParaBanco as any);
+
+      if (!criado) {
+        toast({
+          title: "Erro ao realizar agendamento",
+          description: "Não foi possível salvar o agendamento. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Agendamento realizado com sucesso!",
+        description: `${appointmentData.cliente_nome} • ${appointmentData.start_time?.slice(0, 5)}`,
+        variant: "default",
+      });
+
+      onClose();
     } catch (error) {
-      console.error('Erro ao enviar para webhook:', error);
+      console.error('Erro ao criar agendamento:', error);
       toast({
         title: "Erro ao realizar agendamento",
         description: "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.",
@@ -466,7 +366,7 @@ export const MultiStepAppointmentForm: React.FC<MultiStepAppointmentFormProps> =
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader className="pb-4 border-b">
-          <DialogTitle className="text-xl font-bold text-[#00897B]">
+          <DialogTitle className="text-xl font-bold text-primary">
             {appointmentToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}
           </DialogTitle>
         </DialogHeader>
@@ -478,7 +378,7 @@ export const MultiStepAppointmentForm: React.FC<MultiStepAppointmentFormProps> =
         />
 
         <div className="py-6">
-          <div className="bg-white rounded-lg p-4 shadow-sm border">
+          <div className="bg-card rounded-lg p-4 shadow-sm border">
             <CurrentStepComponent 
               formData={formData} 
               updateFormData={updateFormData} 
@@ -508,7 +408,7 @@ export const MultiStepAppointmentForm: React.FC<MultiStepAppointmentFormProps> =
               onClick={handleNext} 
               disabled={isLoading}
               size="lg"
-              className="px-6 bg-[#00897B] hover:bg-[#00796B]"
+              className="px-6 bg-primary hover:bg-primary/90"
             >
               Próximo
               <ChevronRight className="ml-2 h-5 w-5" />
@@ -518,7 +418,7 @@ export const MultiStepAppointmentForm: React.FC<MultiStepAppointmentFormProps> =
               onClick={handleSubmit} 
               disabled={isLoading}
               size="lg"
-              className="px-6 bg-[#00897B] hover:bg-[#00796B]"
+              className="px-6 bg-primary hover:bg-primary/90"
             >
               {isLoading ? 'Salvando...' : (
                 <>

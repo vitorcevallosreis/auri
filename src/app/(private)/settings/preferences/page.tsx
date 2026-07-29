@@ -23,7 +23,7 @@ export default function PreferencesPage() {
       <div className="container py-8">
         <div className="flex items-center gap-2 mb-6">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5 text-[#00897B]" />
+            <ArrowLeft className="h-5 w-5 text-primary" />
           </Button>
           <h1 className="text-3xl font-bold tracking-tight">Preferências</h1>
         </div>
@@ -43,15 +43,15 @@ export default function PreferencesPage() {
                 className="space-y-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="light" id="light-theme" className="text-[#00897B] border-[#00897B] focus:ring-[#00897B]" />
+                  <RadioGroupItem value="light" id="light-theme" className="text-primary border-primary focus:ring-ring" />
                   <Label htmlFor="light-theme">Tema Claro</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="dark" id="dark-theme" className="text-[#00897B] border-[#00897B] focus:ring-[#00897B]" />
+                  <RadioGroupItem value="dark" id="dark-theme" className="text-primary border-primary focus:ring-ring" />
                   <Label htmlFor="dark-theme">Tema Escuro</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="system" id="system-theme" className="text-[#00897B] border-[#00897B] focus:ring-[#00897B]" />
+                  <RadioGroupItem value="system" id="system-theme" className="text-primary border-primary focus:ring-ring" />
                   <Label htmlFor="system-theme">Usar tema do sistema</Label>
                 </div>
               </RadioGroup>
@@ -72,7 +72,7 @@ export default function PreferencesPage() {
                   id="notifications" 
                   checked={notifications}
                   onCheckedChange={setNotifications}
-                  className="data-[state=checked]:bg-[#00897B]"
+                  className="data-[state=checked]:bg-primary"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -81,7 +81,7 @@ export default function PreferencesPage() {
                   id="sounds" 
                   checked={sounds}
                   onCheckedChange={setSounds}
-                  className="data-[state=checked]:bg-[#00897B]"
+                  className="data-[state=checked]:bg-primary"
                 />
               </div>
             </CardContent>
@@ -104,14 +104,14 @@ export default function PreferencesPage() {
                   id="auto-scroll" 
                   checked={chatAutoScroll}
                   onCheckedChange={setChatAutoScroll}
-                  className="data-[state=checked]:bg-[#00897B]"
+                  className="data-[state=checked]:bg-primary"
                 />
               </div>
             </CardContent>
           </Card>
 
           <div className="flex justify-end mt-4">
-            <Button className="bg-[#00897B] hover:bg-[#007366] text-white">Salvar Preferências</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Salvar Preferências</Button>
           </div>
         </div>
       </div>
