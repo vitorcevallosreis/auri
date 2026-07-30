@@ -1,240 +1,264 @@
-# Handoff — myia_app (Auri Software)
+# Handoff — Auri (myia_app)
 
-> **Para a próxima sessão:** leia este arquivo primeiro. Ele resume tudo que foi feito e
-> o que vem a seguir, para você continuar sem re-derivar contexto. Atualizado: 2026-07-16.
-
----
-
-## TL;DR
-
-**myia_app** é um SaaS multi-tenant de **atendimento por IA no WhatsApp + agendamento** para
-clínicas (Next.js 15 + Supabase + MinIO). Estava **inativo há ~1 ano**; estamos relançando numa
-stack que controlamos e adicionando funcionalidades.
-
-**Plano 1 (migração para Supabase próprio + religar painel) está COMPLETO, validado e MERGEADO na `main`**
-(merge `--no-ff`, commit `15ff53e`, pushed). Review de pré-merge deu **0 bloqueadores**.
-
-**Plano 2 (Evolution API self-host + ingress WhatsApp) está EM ANDAMENTO** na branch
-`feat/plan2-evolution-ingress` (pushed) — ver a seção "Plano 2" abaixo. Feito em sessões orquestradas
-(maestro + 2 agentes Maestri).
+> **Leia este arquivo primeiro.** Ele existe para você continuar sem re-derivar contexto.
+> Atualizado: **2026-07-30**. Branch de trabalho: `feat/plan2-evolution-ingress`, último
+> commit `9429b3b` (pushed).
 
 ---
 
-## 🚦 FASE LIVE — estado atual (2026-07-19) — LEIA PRIMEIRO
+## 1. O que "100% no ar" significa aqui
 
-### ✅ NO AR e validado
-- **Evolution API v2.3.7 rodando em `https://wa.auri.global`** — VPS **Contabo US East `80.190.72.243`**,
-  TLS válido (Let's Encrypt), 3 containers (`evolution_api`, `evolution_postgres`, `evolution_redis`)
-  com `restart: always` (sobrevive reboot). Rede docker `evolution_evolution-net`.
-- **Smoke-test TUDO VERDE contra o Evolution real** (`node scripts/whatsapp-golive-check.mjs`): cria
-  instância, o webhook **persiste** (o "caveat" NÃO existe no v2.3.7), QR e connectionState ok.
-- **Acesso:** SSH por **chave** — `ssh root@80.190.72.243` (sem senha). Segredos gerados em
-  **`../.night-work/vps-secrets.env`** (`EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET`).
-- **App-deploy env** pronto em **`../.night-work/app-deploy.env`** (valores reais de build+runtime).
+Cuidado com a ambiguidade, porque ela muda todo o planejamento:
 
-### 🔄 App: deploy NO VPS — em andamento (parado a pedido do usuário)
-Decisão de arquitetura: **servir o app em `wa.auri.global`** (nginx → app:3000) e deixar o **Evolution
-interno** (o app o acessa em `http://evolution_api:8080` pela rede docker). Robustez: tudo roda no VPS,
-não depende do Mac do usuário estar ligado.
-- ✅ Código merjado (`ad772f6`, pushed): Dockerfile standalone + `scripts/deploy-app-vps.sh`.
-- ✅ **Source já foi pra `/opt/auri-app` no VPS** (rsync feito).
-- ❌ **FALTA:** `docker build` no VPS → `docker run` (rede `evolution_evolution-net`, `127.0.0.1:3000`,
-  `--env-file /opt/auri-app/.env.runtime`) → **repoint do nginx** (`/etc/nginx/sites-available/evolution`:
-  `proxy_pass http://127.0.0.1:8080` → `:3000`; backup em `/root/nginx-evolution.bak.*`) → `nginx -t && reload`.
-  ⚠️ Após o repoint, o Evolution deixa de ser público em `wa.auri.global` (fica só interno — o que é ok).
+- **O painel JÁ está no ar.** `https://app.auri.global` responde HTTP 200, container de pé.
+  Dá para logar e navegar.
+- **A plataforma NÃO atende ninguém.** Nenhum número de WhatsApp conectado, nenhum paciente,
+  nenhuma conversa, nenhum agendamento. O banco tem **zero linhas** de negócio.
 
-### ❌ O que falta para ficar 100% no ar
-1. **[deploy]** Buildar + subir o container do app no VPS (comandos prontos no `scripts/deploy-app-vps.sh`;
-   rodar os passos explicitamente — o script como bloco único foi barrado pelo classifier de auto-mode).
-2. **[deploy]** Repoint do nginx para o app + reload.
-3. **[verificar]** Login funciona? E o **warning `(private)/page` em standalone** — pode fazer a home `/`
-   dar 500 no container (bug conhecido de route-group + `force-dynamic`). Testar `/` e `/login`; se a home
-   500ar, o fix é garantir o `page_client-reference-manifest.js` no standalone (copiar no Dockerfile) ou
-   ajustar o `force-dynamic`.
-4. **[usuário]** No painel: **Assistants → Channels → criar canal → escanear o QR** com o WhatsApp do número.
-5. **[usuário]** **E2E real:** mandar msg do celular → aparece na inbox; responder pela inbox → chega no celular.
+Então "100% no ar" = **um paciente manda mensagem no WhatsApp da clínica, o agente responde e
+agenda**. É isso que falta, e é o que o Plano 3 constrói.
 
-### 🔧 Follow-ups (não bloqueiam o "no ar")
-- **#14** hardening da exposição de token client-side (MessageService server-side + revogar SELECT das
-  colunas `token`/`urlapi`) — deferido, precisa de plano próprio.
-- 🔐 **Resetar a senha root do VPS** no painel Contabo (ela passou pelo chat; acesso já é por chave SSH).
-- Depois de estabilizar: dar ao app um subdomínio próprio (`app.auri.global`) e mover o gateway p/ região BR (LGPD).
+---
 
-### Comandos prontos para retomar o deploy (rodar os passos explícitos)
+## 2. Estado verificado (2026-07-30)
+
+### Infra
+| Item | Estado |
+|---|---|
+| VPS | Contabo `80.190.72.243`, SSH **por chave** (`ssh root@80.190.72.243`, sem senha) |
+| App | `https://app.auri.global` → HTTP 200, container `auri-app` |
+| Evolution API | v2.3.7 em `https://wa.auri.global`, 3 containers `restart: always`, no ar há 13 dias |
+| Rede docker | `evolution_evolution-net` |
+| Supabase | projeto `ffkicwhchrwvavkhfqol` (sa-east-1), Postgres 17 |
+| Migrations | **0001–0015 aplicadas** |
+| Segredos | `<repo>/../.night-work/{vps-secrets.env,app-deploy.env}` |
+
+### Banco — vazio de dados de negócio
+Contado em 2026-07-29: **0 linhas** em `myia_channels`, `myia_chat`, `myia_messages`,
+`myia_contacts`, `myia_appointments`. Apenas 2 assistentes de seed.
+
+Isso é uma **boa notícia**: não há migração de dados, cutover nem conversa em andamento a
+proteger em nenhuma mudança daqui pra frente.
+
+### ⚠️ Conexão direta do Supabase está morta nesta rede
+`db.<ref>.supabase.co` só publica registro AAAA (IPv6-only) e ficou inalcançável. O
+`scripts/db-test.mjs` já **cai para o pooler automaticamente**
+(`aws-1-sa-east-1.pooler.supabase.com:5432`, usuário `postgres.<ref>`). Se outro script falhar
+com `EHOSTUNREACH`, é isso — copie o fallback de lá.
+
+---
+
+## 3. Histórico dos planos
+
+### Plano 1 — migração para Supabase próprio ✅ COMPLETO, merjado na `main`
+Schema `myia_*` reconstruído (migrations 0001–0010), RLS multi-tenant provada, Auth ligado ao
+Supabase real. Commit de merge `15ff53e`.
+
+### Plano 2 — Evolution API self-host ✅ CÓDIGO PRONTO / ⚠️ SUPERSEDIDO
+Gateway Evolution no ar e com smoke-test verde, mas **nunca carregou uma conversa real**. O
+Plano 3 decidiu substituí-lo pela API oficial da Meta — ver abaixo.
+
+### Plano 3 — Agentes IA no WhatsApp oficial 🔄 EM ANDAMENTO
+Spec e plano: `docs/superpowers/{specs,plans}/2026-07-29-plano3-agentes-ia-whatsapp-oficial.md`.
+
+**Decisões fechadas com o maestro (2026-07-29):**
+1. **Cloud API SUBSTITUI o Evolution** (código do Evolution sai; banco vazio ⇒ sem migração)
+2. **Embedded Signup** — cada clínica conecta o próprio número
+3. **Nós escolhemos o modelo** — `claude-opus-5`; seletor de LLM sai da UI do cliente
+4. **Cobrança por conversa** = janela de 24h por contato (mesmo recorte da Meta)
+
+**Correção de rota importante:** o roadmap do Plano 1 dizia "Plano 3 = Claude Agent SDK".
+**Está errado.** O Agent SDK é o Claude Code como biblioteca (ferramentas de arquivo/bash), para
+agente de codebase. Managed Agents também não serve (hospeda container por sessão — forma e custo
+errados para conversa de WhatsApp). O agente aqui é **stateless por turno**, então a stack é
+**Claude API + Tool Runner**.
+
+| Fase | Estado | Entrega |
+|---|---|---|
+| P3.0 Habilitação na Meta | ❌ **NÃO INICIADA — BLOQUEIA TUDO** | Business Verification, App Review, Embedded Signup, templates |
+| P3.1 Canal Cloud API | ✅ código pronto, **não testado contra a Meta** | migration 0013, adapter, webhook assinado, Embedded Signup, cripto do token |
+| P3.2 Fila + worker | ✅ pronto e testado | migration 0014, `worker/`, debounce, `Dockerfile.worker` |
+| P3.3 Turno do agente | ✅ código pronto, **modelo nunca chamado** | migration 0015, prompt, 5 tools de leitura, observabilidade |
+| P3.4 Tools de escrita | ⬜ | agendar/remarcar/cancelar + constraint anti-overbooking |
+| P3.5 Escalonamento humano | ⬜ | `transferir_para_humano` + envio real pelo WhatsApp |
+| P3.6 UI Agentes IA | ⬜ | config de tools, remover seletor de LLM |
+| P3.7 FollowUps | ⬜ | templates da Meta + scheduler |
+| P3.8 Cobrança por conversa | ⬜ | `myia_conversations`, painel de custo |
+
+---
+
+## 4. 🔴 A decisão que trava o cronograma — DECIDIR ANTES DE CODAR
+
+**P3.0 (verificação de negócio + App Review da Meta) leva SEMANAS** e bloqueia P3.1 em diante.
+Enquanto isso, a plataforma não atende ninguém.
+
+Existe um caminho alternativo, e ele é uma escolha do maestro, não minha:
+
+| | **Caminho A — ponte pelo Evolution** | **Caminho B — só Cloud API** |
+|---|---|---|
+| Prazo até atender paciente | **dias** | **semanas** (espera a Meta) |
+| Como | Evolution já está no ar e testado. Escrever um `EvolutionAdapter` na interface que já existe e ligar o ingress atual (`/api/whatsapp/ingress`) no `enqueueAgentTurn` | Esperar P3.0 e seguir o plano |
+| Risco | **Viola os ToS do WhatsApp**; o número da clínica pode ser banido | Nenhum — é o caminho sancionado |
+| Trabalho jogado fora | Pouco: o `ChannelAdapter` já isola o agente do transporte | — |
+
+**Contexto que ajuda a decidir:** o `ChannelAdapter` (`src/lib/whatsapp/ChannelAdapter.ts`) foi
+mantido como "costura de teste" quando a substituição foi decidida. Se o Caminho A for escolhido,
+ele vira exatamente o que se precisa — o agente não sabe qual transporte está por baixo.
+
+**Recomendação honesta:** iniciar **P3.0 hoje** de qualquer forma (não custa nada e o relógio já
+está correndo), e decidir A ou B em função de quão urgente é ter clínica atendendo. Se houver
+cliente esperando, A com número descartável de teste; se não, B.
+
+---
+
+## 5. Bloqueios concretos
+
+| # | Bloqueio | Impacto | Como resolver |
+|---|---|---|---|
+| 1 | **P3.0 não iniciado** | Trava P3.1+ | Meta Business Account → Business Verification → App em modo Live → App Review (`whatsapp_business_messaging`, `whatsapp_business_management`, `business_management`) → Embedded Signup → submeter templates |
+| 2 | **Sem `ANTHROPIC_API_KEY`** | O turno do agente (P3.3) nunca executou | Gerar chave e pôr em `.env.local` + `app-deploy.env` |
+| 3 | **Envs do P3.1/P3.3 não estão no deploy** | Rotas novas responderiam 500 | Gerar e adicionar em `../.night-work/app-deploy.env` (ver §6) |
+| 4 | Storage MinIO não migrado | Upload de imagem falha no painel | 5 rotas em `src/app/api/upload/*` usam MinIO; `.env.local` ainda tem placeholder |
+
+---
+
+## 6. Próximos passos — ordem para chegar a 100%
+
+### Passo 0 — HOJE, não é código
+```
+[ ] Meta Business Account + Business Verification
+[ ] App Meta com produto WhatsApp, em modo Live
+[ ] App Review dos 3 escopos
+[ ] Embedded Signup configurado
+[ ] Submeter templates: confirmação de agendamento, lembrete 24h, reengajamento
+[ ] Levantar o rate card VIGENTE da Meta (a precificação mudou de conversa para
+    mensagem em 2025 — não confiar em memória para modelar margem)
+```
+
+### Passo 1 — gerar segredos e completar o deploy env
 ```bash
-# 1. build no VPS (do Mac, com o env carregado):
-set -a; source "../.night-work/app-deploy.env"; set +a
-ssh root@80.190.72.243 "cd /opt/auri-app && docker build \
-  --build-arg NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-  --build-arg NEXT_PUBLIC_SUPABASE_STORAGE_URL=$NEXT_PUBLIC_SUPABASE_STORAGE_URL \
-  --build-arg NEXT_PUBLIC_APP_URL=https://wa.auri.global \
-  --build-arg NEXT_PUBLIC_WEBHOOK=$NEXT_PUBLIC_WEBHOOK \
-  -t auri-app:latest ."
-# 2. runtime env + run (server-only):
-#    escrever /opt/auri-app/.env.runtime com SUPABASE_SERVICE_ROLE_KEY, EVOLUTION_API_URL=http://evolution_api:8080,
-#    EVOLUTION_API_KEY, EVOLUTION_WEBHOOK_SECRET (ver ../.night-work/app-deploy.env), chmod 600, então:
-ssh root@80.190.72.243 "docker rm -f auri-app 2>/dev/null; docker run -d --name auri-app --restart always \
-  --network evolution_evolution-net -p 127.0.0.1:3000:3000 --env-file /opt/auri-app/.env.runtime auri-app:latest"
-# 3. repoint nginx (proxy_pass :8080 -> :3000) + nginx -t && systemctl reload nginx
+openssl rand -base64 32   # WHATSAPP_TOKEN_ENC_KEY
+openssl rand -hex 32      # META_WEBHOOK_VERIFY_TOKEN
+```
+Adicionar em `../.night-work/app-deploy.env`: `META_APP_ID`, `META_APP_SECRET`,
+`NEXT_PUBLIC_META_APP_ID`, `META_WEBHOOK_VERIFY_TOKEN`, `META_GRAPH_VERSION`,
+`WHATSAPP_TOKEN_ENC_KEY`, `ANTHROPIC_API_KEY`, `AGENT_*`, `WORKER_*`.
+Referência comentada completa: `.env.example`.
+
+> ⚠️ **Guardar `WHATSAPP_TOKEN_ENC_KEY` em local seguro.** Perdê-la inutiliza todos os tokens
+> de WhatsApp salvos e cada clínica precisa reconectar o número.
+
+### Passo 2 — validar o agente contra o modelo de verdade
+Com `ANTHROPIC_API_KEY`, é o primeiro teste que ninguém fez ainda:
+```bash
+npm run test:unit           # 31 testes, sem rede
+npm run test:integration    # worker + isolamento das tools, contra o banco
+# e então: criar uma clínica de teste com serviços/profissionais/agenda,
+# enfileirar um turno e conferir myia_agent_runs (cache_read_tokens > 0 no 2º turno)
+```
+**O que observar:** `cache_read_tokens` perto de zero em turnos repetidos significa que algo
+volátil entrou antes do breakpoint do cache — a clínica pagaria 1x em vez de 0,1x, sem erro
+nenhum. É a falha silenciosa mais cara do sistema.
+
+### Passo 3 — P3.4: tools de escrita
+Migration com **constraint de exclusão** (`btree_gist`) em `myia_appointments` contra duplo
+agendamento — garantia no banco, não na lógica. Toda escrita revalida disponibilidade **dentro da
+transação**: o modelo pode alucinar horário.
+
+### Passo 4 — P3.5: escalonamento + envio real
+`transferir_para_humano` → `myia_chat.chat_pause`. E **trocar o rascunho por envio**: hoje o
+agente grava `status: PENDING` sem mandar nada (ver §7).
+
+**Aqui a plataforma passa a atender de verdade.** P3.6/3.7/3.8 são melhorias em cima.
+
+### Passo 5 — fechar as pendências do painel (contam para "100%")
+```
+[ ] Storage: migrar MinIO ou trocar por Supabase Storage (upload de imagem quebrado)
+[ ] .env.local com valores reais de MinIO/webhook/mapbox
+[ ] "Novo Chat" (src/app/(private)/chats/CreateChat) — onSubmit é console.log; o app NÃO
+    sabe criar conversa (não há insert em myia_chat em lugar nenhum)
+[ ] Abas SubAgents / Trainings / Integrations — UI sem nenhuma tabela por trás
+[ ] Remover o código do Evolution (só DEPOIS do Cloud API provado)
+[ ] Desligar os containers do Evolution no VPS
 ```
 
 ---
 
-## Plano 2 — estado (branch `feat/plan2-evolution-ingress`)
+## 7. Comportamentos deliberados que parecem bug
 
-**Contexto:** o gateway antigo de WhatsApp (n8n em `webhooks.sejanexa.com.br`) se perdeu. O Plano 2
-reconstrói o gateway como infra nossa: Evolution API v2.3.7 self-hosted num VPS + rotas de
-ingress/envio/gestão-de-canal no Next.js, gravando no Supabase via service role (Realtime atualiza a
-inbox). **Escopo = só o gateway; a IA é o Plano 3.** Docs: `docs/superpowers/specs/2026-07-15-plano2-evolution-ingress-design.md`
-(spec, com decisões marcadas 🔸DECISÃO p/ você revisar) e `docs/superpowers/plans/2026-07-15-plano2-evolution-ingress.md` (plano).
+Se você encontrar isto e achar que está quebrado — **não está**, foi escolhido:
 
-**JÁ FEITO E VERIFICADO (codável sem VPS):**
-- **P2.0** fix do build de produção (era pré-existente, NÃO regressão do Plano 1): `force-dynamic` no
-  layout privado — `npm run build` volta a passar. `src/app/(private)/layout.tsx`.
-- **P2.1** migration `0011_whatsapp_ingress.sql` (índice em `myia_channels."instanceWpp"`; único parcial
-  em `myia_messages(instance_id, message_id)` p/ dedup) + teste. **11/11 testes SQL passam**, aplicada na nuvem.
-- **P2.2** envs server-only: `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET` (em `.env.example`).
-- **P2.3** rota de ingress `src/app/api/whatsapp/ingress/route.ts` — valida header `X-Auri-Webhook-Secret`,
-  resolve tenant por `instanceWpp`, upsert contato/chat, insert idempotente de mensagem. **E2E testado
-  via curl contra o Supabase dev** (grava, dedup, 401, drop de fromMe/grupo). Commit `837de03`.
-- **P2.4** envio direto ao Evolution em `src/app/api/messages/send/route.ts` (substitui o n8n por
-  `POST {urlapi}/message/sendText/{instance}`), **corrige um bug latente** (join por `channel_id`
-  inexistente → agora resolve por `instanceWpp = chat.instance_id`), status SENT/FAILED; mídia = TODO
-  fase 2. Commit `ec41762`.
-- **P2.6** runbook de deploy do VPS: `docs/deploy/evolution-vps.md` (compose, nginx+TLS, webhook, backups). Commit `1df5d3e`.
-- **P2.5** gestão de instância + religar UI de Channels: rota `src/app/api/whatsapp/instance/route.ts`
-  (create/connect/logout/delete, API key GLOBAL server-only, persiste em `myia_channels`), `ChannelService`
-  reescrito (n8n → rotas Next), UI `Channels`/context `Assistants` religados (createChannel devolve o canal
-  → abre modal de QR; fixes de guardas de logout/delete). **Build limpo.** Commit `7037973`.
-  ⚠️ Runtime contra o Evolution NÃO testado (precisa do VPS). Ponto de atenção a validar ao vivo: o
-  envelope `webhook` embutido no `/instance/create` (usa `byEvents/base64`) pode precisar de ajuste.
-- **Fix de segurança (review do P2.5 achou um IDOR cross-tenant):** `src/app/api/whatsapp/instance` é
-  server-only via service role e o middleware **não** protege `/api/*` → sem auth, qualquer um pegaria o
-  QR/token de outra empresa. Fechado no commit `8aa771d`: helper `src/lib/auth/tenant.ts` (valida o JWT do
-  Supabase via `auth.getUser` → `company_id` de `myia_users`), auth 401, ownership nas 4 ações, segredos
-  (`token`/`urlapi`) removidos das respostas, `ChannelService` manda `Authorization: Bearer`. **Build limpo.**
-
-- **Auth pré-existente das rotas de mensagem — FECHADO (commit `d48c9a3`, tracker #13):**
-  `/api/messages/send` e `/api/messages/typing` agora exigem JWT (401) + validam `chat.company_id` ==
-  tenant (404). Helper `src/lib/api/authedFetch.ts` anexa `Bearer`; os 7 call sites de send migrados.
-  `/typing` também teve o join quebrado (`channel:channel_id`) corrigido para `instanceWpp`.
-
-**PENDENTE:**
-- **Exposição de segredo ao browser — tracker #14 (hardening coordenado, NÃO feito):** `myia_channels.token`/
-  `urlapi` (apikey da instância) são legíveis pelo client via RLS, e `src/services/MessageService.ts`
-  (1457 linhas) chama o Evolution **direto do browser** lendo esses campos. Fix = mover as chamadas
-  Evolution do MessageService para rotas server-only (autenticadas) **e** revogar SELECT do client nas
-  colunas de segredo. Precisa de plano próprio (não é wholesale trivial).
-- **P2.7–P2.9 (precisa do VPS):** provisionar o VPS (🔸confirmar **Contabo SP** vs **Hetzner** — a spec
-  recomenda Contabo SP por LGPD, alinhado ao Supabase em sa-east-1), subir o Evolution via o runbook,
-  setar `EVOLUTION_API_*` reais, criar instância + parear QR, teste ponta-a-ponta ao vivo.
-  **Prep pronta para esta fase:** (a) subir o Evolution com **`docs/deploy/bootstrap-evolution.sh`** — script
-  turnkey idempotente (Docker+compose, ufw, nginx+certbot, segredos gerados, `DATABASE_SAVE_DATA_NEW_MESSAGE=false`):
-  `WA_DOMAIN=wa.seudominio LETSENCRYPT_EMAIL=voce@... sudo -E bash docs/deploy/bootstrap-evolution.sh`
-  (imprime `EVOLUTION_API_KEY`/`WEBHOOK_SECRET` pro `.env.local` do app); (b) `docs/deploy/plano2-go-live-checklist.md`
-  (checklist linear) e `node scripts/whatsapp-golive-check.mjs` após o deploy — valida o **caveat do webhook**.
-  **Decisão de host:** piloto em **Contabo US East** é aceitável porque o `save-data=false` deixa o conteúdo só
-  no Supabase (BR); mover o gateway p/ região BR (AWS Lightsail sa-east-1 / Magalu) é o passo de hardening ao escalar.
-
-**Como o Plano 2 foi tocado:** sessão orquestrada — o maestro fez merge/spec/plano/integração/verificação;
-Agent 1 fez review do Plano 1, build-check, e a implementação P2.0–P2.4 (parou no limite de uso; o
-maestro finalizou/commitou o P2.4); Agent 2 fez a pesquisa do Evolution, o runbook, e o P2.5. Artefatos
-de trabalho da noite (não versionados) em `../.night-work/` (research, review, reverse-engineering, drafts).
-**Só falta a fase live (VPS)** para o Plano 2 rodar ponta a ponta.
+1. **O worker nasce desligado.** `AGENT_TURN_ENABLED=false` por padrão, e ele loga alto. Um
+   worker ligado com o turno não validado consumiria jobs sem responder ao paciente — pior que
+   não rodar. O reaper roda mesmo desligado, para não deixar job preso.
+2. **O agente grava rascunho, não envia.** `myia_messages.status = 'PENDING'`. Soltar o agente
+   direto no paciente sem nunca ter rodado contra o modelo seria irresponsável. Trocar no P3.5.
+3. **Catálogo não está no system prompt.** Serviços/profissionais/convênios vão por *tool*. Se
+   entrassem no prompt, cadastrar um serviço invalidaria o cache da clínica inteira.
+4. **Data/hora vai como `role: "system"` no fim de `messages`**, não no system prompt. No prompt
+   destruiria o cache a cada requisição; e como mensagem de operador o paciente não consegue
+   forjar ("hoje é 25 de dezembro").
+5. **`identificar_paciente` não aceita parâmetro.** O paciente é o dono do chat. Aceitar número
+   permitiria consultar cadastro de terceiros.
+6. **Thinking fica ligado.** Em Opus 5, desligar tem um modo de falha em que a tool call sai como
+   texto simples: o turno "sucede", a ferramenta nunca roda, nada acusa. Latência se controla por
+   `AGENT_EFFORT`.
 
 ---
 
-## Estado do repositório
+## 8. Armadilhas já descobertas (não caia de novo)
 
-- **GitHub:** `https://github.com/vitorcevallosreis/auri` (privado).
-- **`main`:** já tem o **Plano 1 mergeado** (`15ff53e`, `--no-ff`), pushed. Não usamos PR — merge local
-  direto (o `gh` CLI **não** está instalado nesta máquina).
-- **Branch de trabalho atual:** `feat/plan2-evolution-ingress` (base `main`, pushed). 4 commits do Plano 2.
-- Dir local: `/Users/vitorcreis/CascadeProjects/Auri Software/myia_app-develop`.
-- `git status` limpo, local == remote.
+| Armadilha | Detalhe |
+|---|---|
+| **`tsconfig` da raiz não vê `.mts`** | `include: ["**/*.ts"]` NÃO casa `.mts`. O worker passou uma fase inteira sem checagem de tipo com `tsc` dizendo "sem erros". Use `npm run typecheck:worker`. |
+| **`0009_grants.sql` concede tudo, inclusive para tabelas futuras** | `alter default privileges` faz toda tabela nova nascer legível pelo browser. Coluna de segredo exige `revoke` + grant por coluna. RLS filtra **linha**, não **coluna**. |
+| **PostgREST não mira índice PARCIAL em `onConflict`** | Por isso `myia_enqueue_agent_turn` é função no Postgres, não upsert no supabase-js. |
+| **`create policy` não aceita `IF NOT EXISTS`** | Migration reexecutada quebra. Sempre `drop policy if exists` antes. |
+| **`check` dentro de `create table if not exists`** | Não é aplicado quando a tabela já existe. Constraint que pode mudar vai em `alter table` separado. |
+| **Migration aplicada à mão pelo SQL editor** | A `0012` estava no banco mas não registrada; o push seguinte quebrou. Use `supabase migration repair`. |
+| **Middleware exclui `/api/*`** | Rotas de API não recebem auth do middleware. Quem usa service role autentica o chamador via Bearer JWT (`src/lib/auth/tenant.ts`). |
+| **Node type stripping não transforma código** | Nada de `enum`, parameter property ou decorator em `worker/`. |
+| **Aviso `SecretsUsedInArgOrEnv` no build do Docker** | **Falso positivo** — dispara pelo NOME da variável. Já investigado: a imagem final não tem segredo nenhum. Não perca tempo. |
+| **Bypass de login em dev foi REMOVIDO** | O middleware plantava um `authData` falso que tornava `/login` inalcançável em dev. Era a causa raiz do "login não redireciona". Não reintroduza. |
 
-## Projeto Supabase (nosso)
+---
 
-- **Nome:** `myia-app` · **ref:** `ffkicwhchrwvavkhfqol` · **região:** `sa-east-1` (São Paulo, por
-  LGPD/latência) · org `Auri` (`nsbzdlsiccvnrtecehtu`). Postgres 17.
-- URL: `https://ffkicwhchrwvavkhfqol.supabase.co`.
-- **Credenciais (gitignored, NÃO versionar):**
-  - `.env.supabase-dev` — senha do DB + `SUPABASE_DB_URL` (conexão direta IPv6 `db.<ref>.supabase.co:5432`).
-  - `.env.local` — `NEXT_PUBLIC_SUPABASE_URL`, anon key, `SUPABASE_SERVICE_ROLE_KEY`, storage URL.
-- 🔐 **AÇÃO PENDENTE:** o Personal Access Token usado no `supabase login` vazou no histórico da
-  sessão anterior. **Rotacionar** em https://supabase.com/dashboard/account/tokens.
+## 9. Comandos úteis
 
-## Ambiente / gotchas (importante)
+```bash
+# Testes
+npm run test:unit            # 31, sem rede
+npm run test:integration     # worker + tools, escreve e limpa o banco
+npm run typecheck:worker     # o tsc da raiz NÃO cobre worker/
+node scripts/db-test.mjs supabase/tests/0014_agent_jobs.test.sql
 
-Esta máquina **não tem Docker, Homebrew nem psql**. Por isso:
-- Supabase CLI é **devDependency**: use `npx supabase ...` (nunca `supabase` global).
-- Não usamos stack local — trabalhamos direto contra o **projeto na nuvem** (linkado).
-- Runners SQL próprios (a lib `pg` é devDep):
-  - `node scripts/db-test.mjs <arquivo.test.sql>` — roda asserções em transação com rollback;
-    **PASS = zero linhas / exit 0**. Auto-carrega `SUPABASE_DB_URL` de `.env.supabase-dev`.
-  - `node scripts/db-apply.mjs <arquivo.sql>` — aplica com COMMIT (usado no seed).
-  - `node scripts/seed-auth.mjs` — cria usuários de LOGIN via Admin API (ver abaixo).
-- **Aplicar migrations:** `set -a; source .env.supabase-dev; set +a` e
-  `npx supabase db push -p "$SUPABASE_DEV_DB_PASSWORD"`.
-- **Rodar o painel:** `npm run dev` (Next 15 + Turbopack, porta 3000).
+# Banco
+npx supabase migration list --linked
+npx supabase db push --linked
+npx supabase migration repair --status reverted 00NN --linked
 
-## O que o Plano 1 entregou
+# Deploy (sobe app + worker)
+bash scripts/deploy-app-vps.sh
+DEPLOY_WORKER=0 bash scripts/deploy-app-vps.sh   # só o painel
 
-- **Schema completo** reconstruído dos interfaces TS em `supabase/migrations/0001..0010`:
-  tenancy, assistants, mensageria, catálogo, config da empresa, agendamento, **RLS multi-tenant**,
-  fix `appointments.company_id NOT NULL`, **grants explícitos**, **publication de realtime**.
-  Todas as ~20 tabelas usam prefixo `myia_`; isolamento por `company_id = auth_company_id()`.
-- **RLS provado**: `supabase/tests/0009_isolation.test.sql` (controle positivo + negativo).
-- **Painel religado**: `src/contexts/Auth/index.tsx` agora usa **Supabase Auth real**
-  (`signInWithPassword`) e resolve `company_id` de `myia_users`. Fix crítico: cliente Supabase e
-  subscriptions realtime foram de `schema: 'nexa'` → `'public'` (`src/lib/supabase/*`,
-  `src/contexts/Company/index.tsx`). `src/database/types.ts` gerado (resolve import pendurado).
-- **Validado ponta a ponta**: login real + leitura/escrita com RLS retornando só a própria clínica.
-- **10/10 testes SQL passam** (`for t in supabase/tests/*.test.sql; do node scripts/db-test.mjs "$t"; done`).
+# VPS
+ssh root@80.190.72.243 "docker ps"
+ssh root@80.190.72.243 "docker logs --tail 50 auri-agent-worker"
+```
 
-### Usuários de teste
-- **Login (via Admin API, senha `senha123`):** `clinica.a@teste.dev` → empresa A
-  (`aaaaaaaa-...`), `clinica.b@teste.dev` → empresa B (`bbbbbbbb-...`).
-- **Só para o teste de isolamento SQL (não logam):** `iso-a@internal.test` / `iso-b@internal.test`
-  (ids fixos `11111111-...`/`22222222-...`). Motivo: `auth.users` inserido por SQL cru não cria
-  `auth.identities`, então o GoTrue falha o login ("Database error querying schema"). **Sempre criar
-  usuário de login via Admin API, nunca por INSERT em auth.users.**
+---
 
-## Follow-ups / issues conhecidos (NÃO feitos)
+## 10. Dívidas técnicas conhecidas
 
-1. **`signUp`/auto-cadastro quebrado** (Important, fora do escopo do P1): `src/api/auth.ts`
-   (`Register`) e `signUp` apontam pro schema antigo (colunas inexistentes; insert anon em
-   `myia_companies` barrado por RLS, falha silenciosa). Precisa de **RPC SECURITY DEFINER de
-   onboarding** que crie empresa + `myia_users` keyed no `auth.users.id`. Código morto p/ limpar:
-   `Login`/`RefreshToken` em `auth.ts`, `src/api/auth_fixed.ts`, `auth_updated.ts`.
-2. **Storage** (upload de imagem) não migrado — `MINIO_*`/storage ainda apontam para o ambiente
-   antigo; buckets do Supabase novo não criados.
-3. `.env.local` ainda tem valores antigos de MinIO/webhook/mapbox (placeholders).
-4. Minors aceitos no review final (ver `.superpowers/sdd/` reports): `create policy` não idempotente;
-   `updated_at` sem trigger (app seta manual); appointments não valida cross-tenant de
-   professional/service; `%1$s` vs `%I` no format do RLS.
-
-## Roadmap (cada um = ciclo spec → plano → implementação)
-
-- **Plano 2 — Evolution API self-hosted + ingress WhatsApp** (o gateway antigo se perdeu).
-- **Plano 3 — Agent Service (Claude Agent SDK)**: o "cérebro" do WhatsApp que substitui os fluxos
-  n8n perdidos (agendar/consultar/FAQ/handoff/follow-ups como tools; personalidade vem da config do
-  assistente no banco). **Nota:** Agent SDK/serviço em produção — NÃO os subagentes do Claude Code.
-- Depois: backend financeiro (split payment + conciliação fiscal); prontuário por IA (com
-  consentimento); plataforma de dados **RWE anonimizada/consentida** (NÃO vender dado identificável —
-  LGPD art. 11); redesign UI/UX minimalista.
-
-## Documentos de referência
-
-- Spec: `docs/superpowers/specs/2026-07-15-foundation-relaunch-design.md`
-- Plano 1: `docs/superpowers/plans/2026-07-15-plano1-migracao-supabase.md`
-- Ledger de progresso e reports dos subagentes: `.superpowers/sdd/` (gitignored)
-- Memória persistente: `~/.claude/projects/-Users-vitorcreis-CascadeProjects-Auri-Software/memory/`
-
-## Como continuar (checklist p/ a próxima sessão)
-
-1. `cd` no projeto; `git checkout feat/plan1-supabase-migration` (ou já mergeado? checar).
-2. Confirmar que os testes passam: `set -a; source .env.supabase-dev; set +a; for t in supabase/tests/*.test.sql; do node scripts/db-test.mjs "$t"; done`.
-3. Se for continuar o produto: começar o **Plano 2** via brainstorming (o usuário gosta do fluxo
-   spec → plano → subagent-driven que usamos no Plano 1).
+- **`myia_services.tempo_medio` é TEXT livre** ("30 min", "1h", "45"). `worker/tools.mts` tem um
+  parser defensivo com default de 30 min. O certo é uma coluna `duration_minutes integer`.
+- **`myia_channels.token`/`urlapi` legíveis pelo cliente** (tracker #14 do Plano 2). Some sozinho
+  quando o código do Evolution for removido.
+- **`src/services/MessageService.ts` tem 1457 linhas** e chama o Evolution direto do browser. Sai
+  junto com o Evolution.
+- **`ContactImage` ignora `width`/`height` no fallback** (bolinha fixa em 46px). Contornado
+  inline no menu do estado vazio dos chats.
+- **`page_client-reference-manifest` warning no build** — pré-existente, não bloqueia; os deploys
+  passam com ele.
+- **Senha root do VPS foi exposta em transcript** de sessão anterior — o acesso por chave já está
+  configurado; resetar a senha no painel da Contabo continua pendente.
