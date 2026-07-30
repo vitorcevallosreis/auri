@@ -2,7 +2,7 @@
 
 > **Leia este arquivo primeiro.** Ele existe para você continuar sem re-derivar contexto.
 > Atualizado: **2026-07-30**. Branch de trabalho: `feat/plan2-evolution-ingress`, último
-> commit `9429b3b` (pushed).
+> commit `76c4f5d` (pushed).
 
 ---
 
@@ -80,34 +80,51 @@ errados para conversa de WhatsApp). O agente aqui é **stateless por turno**, en
 | P3.2 Fila + worker | ✅ pronto e testado | migration 0014, `worker/`, debounce, `Dockerfile.worker` |
 | P3.3 Turno do agente | ✅ código pronto, **modelo nunca chamado** | migration 0015, prompt, 5 tools de leitura, observabilidade |
 | P3.4 Tools de escrita | ⬜ | agendar/remarcar/cancelar + constraint anti-overbooking |
-| P3.5 Escalonamento humano | ⬜ | `transferir_para_humano` + envio real pelo WhatsApp |
+| P3.5 Escalonamento humano | 🟡 envio JÁ FEITO no Caminho A | falta `transferir_para_humano` |
 | P3.6 UI Agentes IA | ⬜ | config de tools, remover seletor de LLM |
 | P3.7 FollowUps | ⬜ | templates da Meta + scheduler |
 | P3.8 Cobrança por conversa | ⬜ | `myia_conversations`, painel de custo |
 
 ---
 
-## 4. 🔴 A decisão que trava o cronograma — DECIDIR ANTES DE CODAR
+## 4. ✅ CAMINHO A ESCOLHIDO — ponte pelo Evolution, com número de teste
 
-**P3.0 (verificação de negócio + App Review da Meta) leva SEMANAS** e bloqueia P3.1 em diante.
-Enquanto isso, a plataforma não atende ninguém.
+A habilitação na Meta (P3.0) leva semanas e a plataforma não atende ninguém nesse meio tempo.
+**Decisão do maestro (2026-07-30): usar o Evolution como ponte, com número de TESTE**, até a
+Cloud API ser aprovada.
 
-Existe um caminho alternativo, e ele é uma escolha do maestro, não minha:
+> ⚠️ **O Evolution viola os ToS do WhatsApp e o número pode ser banido.** Por isso número de
+> teste — **não usar um número de que a clínica dependa**. É ponte, não destino: sai junto com o
+> resto do código do Evolution quando a Meta aprovar.
 
-| | **Caminho A — ponte pelo Evolution** | **Caminho B — só Cloud API** |
-|---|---|---|
-| Prazo até atender paciente | **dias** | **semanas** (espera a Meta) |
-| Como | Evolution já está no ar e testado. Escrever um `EvolutionAdapter` na interface que já existe e ligar o ingress atual (`/api/whatsapp/ingress`) no `enqueueAgentTurn` | Esperar P3.0 e seguir o plano |
-| Risco | **Viola os ToS do WhatsApp**; o número da clínica pode ser banido | Nenhum — é o caminho sancionado |
-| Trabalho jogado fora | Pouco: o `ChannelAdapter` já isola o agente do transporte | — |
+**P3.0 continua valendo e deve começar já** — o relógio corre em paralelo, e o Caminho A não
+substitui a habilitação oficial.
 
-**Contexto que ajuda a decidir:** o `ChannelAdapter` (`src/lib/whatsapp/ChannelAdapter.ts`) foi
-mantido como "costura de teste" quando a substituição foi decidida. Se o Caminho A for escolhido,
-ele vira exatamente o que se precisa — o agente não sabe qual transporte está por baixo.
+### O que foi construído para a ponte (commit `76c4f5d`)
 
-**Recomendação honesta:** iniciar **P3.0 hoje** de qualquer forma (não custa nada e o relógio já
-está correndo), e decidir A ou B em função de quão urgente é ter clínica atendendo. Se houver
-cliente esperando, A com número descartável de teste; se não, B.
+| Peça | O quê |
+|---|---|
+| `worker/send.mts` | Resolve canal e destinatário a partir do `chat_id` do job e despacha por `myia_channels.provider`. Canal `cloud` **recusa explicitamente** — nunca rodou contra a Meta |
+| `/api/whatsapp/ingress` | Passa a **enfileirar o turno do agente**. Era o elo que faltava para a mensagem do paciente virar resposta |
+| `worker/agentTurn.mts` | Troca o rascunho por envio real, atrás de `AGENT_SEND_ENABLED` |
+| `/api/whatsapp/instance` | Marca `provider: "evolution"` explicitamente (ver armadilha abaixo) |
+
+**Bug pego antes de doer:** a migration 0013 deixou `provider` com default `'cloud'`, porque a
+Cloud API é o destino. Um canal criado pela rota do Evolution nasceria rotulado como `cloud`, o
+worker recusaria enviar, e a resposta do agente ficaria `PENDING` para sempre — **sem erro em
+lugar nenhum**.
+
+### Os dois flags são separados de propósito
+
+`AGENT_TURN_ENABLED` (gerar resposta) e `AGENT_SEND_ENABLED` (mandar ao paciente) são
+independentes. **Recomendação: nos primeiros dias, ligar só o primeiro.** O agente gera, a
+mensagem fica `PENDING` na inbox, e dá para ler o que ele *teria* mandado antes de deixar chegar
+em paciente.
+
+### Comportamento herdado que vale saber
+Sem `urlapi`/`token` no canal, o envio **cai para a env global do Evolution** (mesmo
+comportamento de `/api/messages/send`). Faz sentido num self-host de instância única. Coberto por
+teste nos dois sentidos.
 
 ---
 
@@ -115,8 +132,8 @@ cliente esperando, A com número descartável de teste; se não, B.
 
 | # | Bloqueio | Impacto | Como resolver |
 |---|---|---|---|
-| 1 | **P3.0 não iniciado** | Trava P3.1+ | Meta Business Account → Business Verification → App em modo Live → App Review (`whatsapp_business_messaging`, `whatsapp_business_management`, `business_management`) → Embedded Signup → submeter templates |
-| 2 | **Sem `ANTHROPIC_API_KEY`** | O turno do agente (P3.3) nunca executou | Gerar chave e pôr em `.env.local` + `app-deploy.env` |
+| 1 | **P3.0 não iniciado** | Trava a Cloud API (não trava o Caminho A) | Meta Business Account → Business Verification → App em modo Live → App Review (`whatsapp_business_messaging`, `whatsapp_business_management`, `business_management`) → Embedded Signup → submeter templates |
+| 2 | **Sem `ANTHROPIC_API_KEY`** 🔥 | **ÚNICO bloqueio para a plataforma atender.** O turno do agente nunca executou | Gerar chave e pôr em `.env.local` + `app-deploy.env` |
 | 3 | **Envs do P3.1/P3.3 não estão no deploy** | Rotas novas responderiam 500 | Gerar e adicionar em `../.night-work/app-deploy.env` (ver §6) |
 | 4 | Storage MinIO não migrado | Upload de imagem falha no painel | 5 rotas em `src/app/api/upload/*` usam MinIO; `.env.local` ainda tem placeholder |
 
@@ -124,7 +141,32 @@ cliente esperando, A com número descartável de teste; se não, B.
 
 ## 6. Próximos passos — ordem para chegar a 100%
 
-### Passo 0 — HOJE, não é código
+### 🔥 CAMINHO CURTO — colocar a plataforma atendendo (Caminho A)
+Isto é o que leva de "painel no ar" a "paciente sendo atendido". Tudo que é código já está feito.
+
+```
+[ ] 1. USUÁRIO: gerar ANTHROPIC_API_KEY e colocar em .env.local e em
+       ../.night-work/app-deploy.env
+       ↳ ÚNICO bloqueio entre o código atual e o agente responder.
+[ ] 2. Deploy: bash scripts/deploy-app-vps.sh
+       com AGENT_TURN_ENABLED=true e AGENT_SEND_ENABLED=false
+[ ] 3. USUÁRIO: no painel, Agentes IA → configurar a persona do agente
+       (identidade, propósito, comportamento, assuntos proibidos)
+[ ] 4. USUÁRIO: Agentes IA → Canais → criar canal → escanear o QR com o
+       NÚMERO DE TESTE
+[ ] 5. USUÁRIO: mandar mensagem para o número de teste
+[ ] 6. Conferir: myia_agent_runs (status, tokens, latência) e a resposta
+       gerada na inbox — SEM ter sido enviada ainda
+[ ] 7. Se a qualidade estiver boa: AGENT_SEND_ENABLED=true e redeploy
+[ ] 8. Cadastrar serviços, profissionais e disponibilidade para o agente ter
+       o que consultar (senão ele só conversa)
+```
+
+**No passo 6, olhar `cache_read_tokens`**: perto de zero em turnos repetidos significa que algo
+volátil entrou antes do breakpoint do cache — a clínica pagaria 1x em vez de 0,1x, sem erro
+nenhum. É a falha silenciosa mais cara do sistema.
+
+### Passo 0 — em PARALELO, não é código
 ```
 [ ] Meta Business Account + Business Verification
 [ ] App Meta com produto WhatsApp, em modo Live
@@ -191,8 +233,10 @@ Se você encontrar isto e achar que está quebrado — **não está**, foi escol
 1. **O worker nasce desligado.** `AGENT_TURN_ENABLED=false` por padrão, e ele loga alto. Um
    worker ligado com o turno não validado consumiria jobs sem responder ao paciente — pior que
    não rodar. O reaper roda mesmo desligado, para não deixar job preso.
-2. **O agente grava rascunho, não envia.** `myia_messages.status = 'PENDING'`. Soltar o agente
-   direto no paciente sem nunca ter rodado contra o modelo seria irresponsável. Trocar no P3.5.
+2. **O envio é um flag separado.** `AGENT_SEND_ENABLED` (default `false`) é independente de
+   `AGENT_TURN_ENABLED`. Com o turno ligado e o envio desligado, o agente gera e a mensagem fica
+   `PENDING` na inbox para revisão. A mensagem nasce `PENDING` mesmo com envio ligado — uma queda
+   entre gravar e enviar deixa ela visível como pendente, não como enviada.
 3. **Catálogo não está no system prompt.** Serviços/profissionais/convênios vão por *tool*. Se
    entrassem no prompt, cadastrar um serviço invalidaria o cache da clínica inteira.
 4. **Data/hora vai como `role: "system"` no fim de `messages`**, não no system prompt. No prompt
@@ -219,6 +263,7 @@ Se você encontrar isto e achar que está quebrado — **não está**, foi escol
 | **Middleware exclui `/api/*`** | Rotas de API não recebem auth do middleware. Quem usa service role autentica o chamador via Bearer JWT (`src/lib/auth/tenant.ts`). |
 | **Node type stripping não transforma código** | Nada de `enum`, parameter property ou decorator em `worker/`. |
 | **Aviso `SecretsUsedInArgOrEnv` no build do Docker** | **Falso positivo** — dispara pelo NOME da variável. Já investigado: a imagem final não tem segredo nenhum. Não perca tempo. |
+| **`myia_channels.provider` tem default `'cloud'`** | A Cloud API é o destino do Plano 3, mas canal criado pela rota do Evolution precisa marcar `'evolution'` EXPLICITAMENTE. Sem isso o worker recusa enviar e a resposta fica `PENDING` para sempre, sem erro. |
 | **Bypass de login em dev foi REMOVIDO** | O middleware plantava um `authData` falso que tornava `/login` inalcançável em dev. Era a causa raiz do "login não redireciona". Não reintroduza. |
 
 ---
@@ -228,7 +273,7 @@ Se você encontrar isto e achar que está quebrado — **não está**, foi escol
 ```bash
 # Testes
 npm run test:unit            # 31, sem rede
-npm run test:integration     # worker + tools, escreve e limpa o banco
+npm run test:integration     # worker + tools + envio; escreve e limpa o banco
 npm run typecheck:worker     # o tsc da raiz NÃO cobre worker/
 node scripts/db-test.mjs supabase/tests/0014_agent_jobs.test.sql
 
