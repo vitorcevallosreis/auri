@@ -2,7 +2,7 @@
 
 > **Leia este arquivo primeiro.** Ele existe para você continuar sem re-derivar contexto.
 > Atualizado: **2026-07-30**. Branch de trabalho: `feat/plan2-evolution-ingress`, último
-> commit `76c4f5d` (pushed).
+> commit `a27d955`.
 
 ---
 
@@ -34,11 +34,18 @@ agenda**. É isso que falta, e é o que o Plano 3 constrói.
 | Segredos | `<repo>/../.night-work/{vps-secrets.env,app-deploy.env}` |
 
 ### Banco — vazio de dados de negócio
-Contado em 2026-07-29: **0 linhas** em `myia_channels`, `myia_chat`, `myia_messages`,
-`myia_contacts`, `myia_appointments`. Apenas 2 assistentes de seed.
+Contado em 2026-07-30: **0 linhas** em `myia_channels`, `myia_chat`, `myia_messages`,
+`myia_contacts`, `myia_appointments`, `myia_professionals_medical`,
+`myia_professional_availability`, `myia_company_agreements`, `myia_specialties`.
+`myia_services` tem **1**, `myia_companies` tem 5. Apenas 2 assistentes de seed.
 
 Isso é uma **boa notícia**: não há migração de dados, cutover nem conversa em andamento a
 proteger em nenhuma mudança daqui pra frente.
+
+> ⚠️ **O catálogo vazio não era só falta de digitação.** Até 2026-07-30 o cadastro de
+> profissional postava para um webhook de terceiro morto e não gravava nada — ver §4.1. Hoje
+> grava. Se você encontrar tabela de catálogo vazia, cheque se a tela realmente escreve antes
+> de assumir que ninguém cadastrou.
 
 ### ⚠️ Conexão direta do Supabase está morta nesta rede
 `db.<ref>.supabase.co` só publica registro AAAA (IPv6-only) e ficou inalcançável. O
@@ -81,7 +88,7 @@ errados para conversa de WhatsApp). O agente aqui é **stateless por turno**, en
 | P3.3 Turno do agente | ✅ código pronto, **modelo nunca chamado** (falta `ANTHROPIC_API_KEY`) | migration 0015, prompt, 5 tools de leitura, observabilidade |
 | P3.4 Tools de escrita | ⬜ | agendar/remarcar/cancelar + constraint anti-overbooking |
 | P3.5 Escalonamento humano | 🟡 envio JÁ FEITO no Caminho A | falta `transferir_para_humano` |
-| P3.6 UI Agentes IA | ⬜ | config de tools, remover seletor de LLM |
+| P3.6 UI Agentes IA | 🟡 persona 100% salvável (`a27d955`) | falta config de tools, escalonamento, remover seletor de LLM |
 | P3.7 FollowUps | ⬜ | templates da Meta + scheduler |
 | P3.8 Cobrança por conversa | ⬜ | `myia_conversations`, painel de custo |
 
@@ -128,6 +135,46 @@ teste nos dois sentidos.
 
 ---
 
+## 4.1. Restos do fornecedor antigo: telas que fingiam gravar
+
+Antes do Auri, várias telas delegavam a escrita a webhooks n8n em
+`webhooks.sejanexa.com.br`. **Esse host resolve no DNS mas não conecta.** Cada tela que ainda
+apontava para lá falhava em silêncio — e o painel parecia inteiro.
+
+Já corrigidos (commits `07962c4` e anteriores):
+
+| Tela | O que acontecia | Estado |
+|---|---|---|
+| Agendamentos (`MultiStepAppointmentForm`) | gravação e checagem de conflito no webhook | ✅ grava no Supabase |
+| **Cadastro de profissional** | `axios.post` no webhook, `catch` = `console.log` — clicar em salvar não fazia **nada** visível | ✅ grava as 3 tabelas |
+| **Edição de profissional** | mesmo host morto | ✅ grava |
+| `contexts/Professionals` | `createProfessional` **e** `updateProfessional` com o `supabase` comentado | ✅ reescritos |
+
+**A mesma classe de defeito apareceu sem webhook nenhum**, em `Personality` (commit `a27d955`):
+um `Textarea` com `defaultValue`, sem `onChange`, sem `<form>`, sem submit. Aceitava texto e
+descartava. Se uma tela do painel "não dá erro mas também não persiste", suspeite disto antes de
+procurar em rede ou RLS.
+
+**Varredura feita em 2026-07-30:** não sobrou nenhuma chamada viva a `sejanexa` no `src/`.
+Restam `s3.techtopus.dev` e `evo2.techtopus.dev` (MinIO e Evolution do fornecedor antigo) — o
+MinIO é o bloqueio #4 abaixo.
+
+### O catálogo que o agente lê — quem grava o quê
+
+| Tabela | Tela | Grava? |
+|---|---|---|
+| `myia_services` | Serviços | ✅ |
+| `myia_company_agreements` | Empresa → Convênios | ✅ |
+| `myia_professionals_medical` | Profissionais | ✅ desde `07962c4` |
+| `myia_professional_services` / `_availability` | cadastro de profissional | ✅ desde `07962c4` |
+| `myia_specialties` | — | ❌ **nenhuma escrita no painel inteiro** |
+
+A falta de CRUD de especialidades deixa o passo "Especialidades" do cadastro sempre vazio. Não
+bloqueia: o modal de edição tem `especialidade` como texto livre, e é essa coluna que
+`listar_profissionais` lê.
+
+---
+
 ## 5. Bloqueios concretos
 
 | # | Bloqueio | Impacto | Como resolver |
@@ -150,19 +197,23 @@ Isto é o que leva de "painel no ar" a "paciente sendo atendido". Tudo que é c�
        ↳ ÚNICO bloqueio entre o código atual e o agente responder.
 [ ] 2. Deploy: bash scripts/deploy-app-vps.sh
        com AGENT_TURN_ENABLED=true e AGENT_SEND_ENABLED=false
-[ ] 3. USUÁRIO: no painel, Agentes IA → configurar a persona do agente
-       (identidade, propósito, comportamento, assuntos proibidos)
-[ ] 4. USUÁRIO: Agentes IA → Canais → criar canal → escanear o QR com o
+[ ] 3. USUÁRIO: cadastrar o catálogo ANTES de julgar o agente — serviços,
+       convênios, profissionais e a agenda de cada um.
+       ↳ Sem isso consultar_disponibilidade retorna vazio e o agente responde
+         "não tenho horário" para sempre. Parece persona ruim; é catálogo vazio.
+       ↳ A agenda que o agente lê é gravada NO CADASTRO do profissional.
+         /professionals/availability NÃO serve (ver §10).
+[ ] 4. USUÁRIO: no painel, Agentes IA → configurar a persona
+       (Personalidade, Perfil, Configurações, Treinamentos — são 4 abas)
+[ ] 5. USUÁRIO: Agentes IA → Canais → criar canal → escanear o QR com o
        NÚMERO DE TESTE
-[ ] 5. USUÁRIO: mandar mensagem para o número de teste
-[ ] 6. Conferir: myia_agent_runs (status, tokens, latência) e a resposta
+[ ] 6. USUÁRIO: mandar mensagem para o número de teste
+[ ] 7. Conferir: myia_agent_runs (status, tokens, latência) e a resposta
        gerada na inbox — SEM ter sido enviada ainda
-[ ] 7. Se a qualidade estiver boa: AGENT_SEND_ENABLED=true e redeploy
-[ ] 8. Cadastrar serviços, profissionais e disponibilidade para o agente ter
-       o que consultar (senão ele só conversa)
+[ ] 8. Se a qualidade estiver boa: AGENT_SEND_ENABLED=true e redeploy
 ```
 
-**No passo 6, olhar `cache_read_tokens`**: perto de zero em turnos repetidos significa que algo
+**No passo 7, olhar `cache_read_tokens`**: perto de zero em turnos repetidos significa que algo
 volátil entrou antes do breakpoint do cache — a clínica pagaria 1x em vez de 0,1x, sem erro
 nenhum. É a falha silenciosa mais cara do sistema.
 
@@ -220,6 +271,9 @@ agente grava `status: PENDING` sem mandar nada (ver §7).
 [ ] "Novo Chat" (src/app/(private)/chats/CreateChat) — onSubmit é console.log; o app NÃO
     sabe criar conversa (não há insert em myia_chat em lugar nenhum)
 [ ] Abas SubAgents / Trainings / Integrations — UI sem nenhuma tabela por trás
+[ ] CRUD de especialidades — myia_specialties não tem escrita em lugar nenhum
+[ ] Editar agenda de profissional JÁ cadastrado (hoje só dá no cadastro; ver §10)
+[ ] Decidir entre `behavior` e `behavior_text` — duas colunas, duas abas, uma vence (§10)
 [ ] Remover o código do Evolution (só DEPOIS do Cloud API provado)
 [ ] Desligar os containers do Evolution no VPS
 ```
@@ -265,6 +319,10 @@ Se você encontrar isto e achar que está quebrado — **não está**, foi escol
 | **Aviso `SecretsUsedInArgOrEnv` no build do Docker** | **Falso positivo** — dispara pelo NOME da variável. Já investigado: a imagem final não tem segredo nenhum. Não perca tempo. |
 | **`myia_channels.provider` tem default `'cloud'`** | A Cloud API é o destino do Plano 3, mas canal criado pela rota do Evolution precisa marcar `'evolution'` EXPLICITAMENTE. Sem isso o worker recusa enviar e a resposta fica `PENDING` para sempre, sem erro. |
 | **Bypass de login em dev foi REMOVIDO** | O middleware plantava um `authData` falso que tornava `/login` inalcançável em dev. Era a causa raiz do "login não redireciona". Não reintroduza. |
+| **Tela que "salva" e não persiste** | Duas causas já vistas: (a) `axios.post` para `webhooks.sejanexa.com.br`, host morto, com `catch` que só faz `console.log`; (b) input sem `onChange`/`<form>`/submit, só `defaultValue`. Ver §4.1. Antes de investigar rede ou RLS, confirme que a tela chama mesmo o Supabase. |
+| **`myia_professional_availability` exige `service_id`** | A agenda é por (profissional, **serviço**, dia), não por profissional. Um dia habilitado vira uma linha para CADA serviço que ele atende. |
+| **`weekday` é 1=Segunda … 7=Domingo** | Mesma convenção de `isoWeekday()` em `worker/tools.mts`. Um mapa deslocado faz o agente oferecer horário no dia errado, sem erro nenhum. Coberto por `supabase/tests/0006_professional_write_path.test.sql`. |
+| **`convenios_aceitos` e `especialidade` guardam NOME, não id** | São lidos por `listar_profissionais` e vão para o paciente pela boca do agente. UUID ali faz o agente dizer "atendo o convênio 3f2b91a4-…". |
 
 ---
 
@@ -276,6 +334,11 @@ npm run test:unit            # 31, sem rede
 npm run test:integration     # worker + tools + envio; escreve e limpa o banco
 npm run typecheck:worker     # o tsc da raiz NÃO cobre worker/
 node scripts/db-test.mjs supabase/tests/0014_agent_jobs.test.sql
+node scripts/db-test.mjs supabase/tests/0006_professional_write_path.test.sql
+
+# npx tsc --noEmit tem ~197 linhas de erro PRÉ-EXISTENTES (MessageService,
+# páginas órfãs de professionals). Compare com o baseline antes de culpar sua
+# mudança; o build passa mesmo assim.
 
 # Banco
 npx supabase migration list --linked
@@ -307,3 +370,16 @@ ssh root@80.190.72.243 "docker logs --tail 50 auri-agent-worker"
   passam com ele.
 - **Senha root do VPS foi exposta em transcript** de sessão anterior — o acesso por chave já está
   configurado; resetar a senha no painel da Contabo continua pendente.
+- **`/professionals/availability` está quebrada.** Foi escrita contra outro schema
+  (`day_of_week`, `is_available`, `break_start`) e chama `updateProfessionalAvailability`, que
+  não existe no contexto — dá TypeError ao salvar. Só é linkada pela página órfã
+  `/professionals/[id]`, que não tem link de lugar nenhum e cujo formulário usa campos
+  inexistentes (`bio`, `active`, `specialty`). **A agenda que o agente lê é gravada no cadastro
+  do profissional**, não aqui.
+- **O modal de edição de profissional não toca em serviços/disponibilidade**, de propósito: ele
+  nunca carrega os que já existem, então regravá-los apagaria a agenda criada no cadastro.
+  Editar agenda de profissional já cadastrado continua pendente.
+- **`behavior` e `behavior_text` são duas colunas diferentes** editadas em duas abas diferentes
+  (Perfil escreve `behavior`, Treinamentos escreve `behavior_text`). `prompt.mts` faz
+  `a.behavior ?? a.behavior_text`, então a do Perfil sempre ganha e editar "Comportamento" em
+  Treinamentos pode não ter efeito nenhum. Qual das duas vale é decisão de produto.
