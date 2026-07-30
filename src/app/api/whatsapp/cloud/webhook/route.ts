@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getCloudAdapter, resolveTenantByPhoneNumberId } from "@/lib/whatsapp/cloudChannel"
 import { persistInboundMessage } from "@/lib/whatsapp/persistInbound"
+import { enqueueAgentTurn } from "@/lib/agent/enqueue"
 
 /**
  * Webhook da Meta WhatsApp Cloud API — Plano 3, P3.1.
@@ -122,12 +123,16 @@ export async function POST(req: Request) {
       if (result.inserted) {
         persisted++
 
-        // (6) P3.2 enfileira o turno do agente aqui. Enquanto a fila não
-        //     existe, a mensagem já aparece na inbox por Realtime e um humano
-        //     responde — degradação aceitável, e nada se perde.
-        //     Sem assistente vinculado, não há o que enfileirar de todo jeito.
+        // (6) Enfileira o turno do agente. O debounce está no banco: três
+        //     mensagens seguidas empurram o run_after do mesmo job em vez de
+        //     criar três. Sem assistente vinculado não há o que enfileirar —
+        //     a conversa fica na inbox para atendimento humano.
         if (tenant.assistantId) {
-          // TODO(P3.2): enqueueAgentTurn({ chatId: result.chatId, ... })
+          await enqueueAgentTurn({
+            companyId: tenant.companyId,
+            chatId: result.chatId,
+            assistantId: tenant.assistantId,
+          })
         }
       } else {
         duplicates++

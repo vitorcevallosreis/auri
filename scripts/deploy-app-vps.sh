@@ -43,6 +43,11 @@ VPS_HOST="${VPS_HOST:-root@80.190.72.243}"
 APP_DIR="${APP_DIR:-/opt/auri-app}"
 IMAGE_TAG="${IMAGE_TAG:-auri-app:latest}"
 CONTAINER_NAME="${CONTAINER_NAME:-auri-app}"
+WORKER_IMAGE_TAG="${WORKER_IMAGE_TAG:-auri-agent-worker:latest}"
+WORKER_CONTAINER_NAME="${WORKER_CONTAINER_NAME:-auri-agent-worker}"
+# Plano 3 P3.2: o worker sobe junto por padrão. DEPLOY_WORKER=0 pula (útil para
+# um deploy só do painel).
+DEPLOY_WORKER="${DEPLOY_WORKER:-1}"
 DOCKER_NETWORK="${DOCKER_NETWORK:-evolution_evolution-net}"
 HOST_PORT="${HOST_PORT:-127.0.0.1:3000}"
 
@@ -56,6 +61,21 @@ RUNTIME_KEYS=(
   EVOLUTION_API_URL
   EVOLUTION_API_KEY
   EVOLUTION_WEBHOOK_SECRET
+  # --- WhatsApp Cloud API + agente (Plano 3) ---
+  META_APP_ID
+  META_APP_SECRET
+  META_WEBHOOK_VERIFY_TOKEN
+  META_GRAPH_VERSION
+  WHATSAPP_TOKEN_ENC_KEY
+  AGENT_DEBOUNCE_SECONDS
+  # O worker precisa da URL do Supabase em runtime; no app ela é inlinada no
+  # build, mas o worker não passa por build do Next.
+  NEXT_PUBLIC_SUPABASE_URL
+  # Default do worker é DESLIGADO (turno do agente é stub até o P3.3).
+  AGENT_TURN_ENABLED
+  WORKER_POLL_INTERVAL_MS
+  WORKER_CLAIM_BATCH
+  WORKER_REAP_TIMEOUT_SECONDS
 )
 
 # Envs inlinadas no BUILD (--build-arg). Devem casar com os ARG do Dockerfile.
@@ -171,6 +191,46 @@ ssh "${VPS_HOST}" "docker run -d \
   -p '${HOST_PORT}:3000' \
   --env-file '${APP_DIR}/.env.runtime' \
   '${IMAGE_TAG}'"
+
+# ---------------------------------------------------------------------------
+# 5b. Worker do agente (Plano 3, P3.2)
+# ---------------------------------------------------------------------------
+# Container separado: a Meta exige ack do webhook em ~5s e um turno do agente
+# leva segundos. Sem build de assets — o worker roda TypeScript direto com
+# --experimental-strip-types.
+if [[ "${DEPLOY_WORKER}" == "1" ]]; then
+  log "docker build ${WORKER_IMAGE_TAG} no VPS"
+  ssh "${VPS_HOST}" \
+    "cd '${APP_DIR}' && docker build -f Dockerfile.worker -t '${WORKER_IMAGE_TAG}' ."
+
+  log "Parando/removendo worker antigo (se existir)"
+  # SIGTERM primeiro: o worker tem shutdown gracioso e termina os jobs em voo,
+  # evitando deixá-los presos em 'running' até o reaper.
+  ssh "${VPS_HOST}" "docker stop -t 35 '${WORKER_CONTAINER_NAME}' >/dev/null 2>&1 || true"
+  ssh "${VPS_HOST}" "docker rm -f '${WORKER_CONTAINER_NAME}' >/dev/null 2>&1 || true"
+
+  log "Subindo ${WORKER_CONTAINER_NAME} na rede ${DOCKER_NETWORK}"
+  # Sem -p: o worker não expõe porta, só consome a fila.
+  ssh "${VPS_HOST}" "docker run -d \
+    --name '${WORKER_CONTAINER_NAME}' \
+    --restart always \
+    --network '${DOCKER_NETWORK}' \
+    --env-file '${APP_DIR}/.env.runtime' \
+    '${WORKER_IMAGE_TAG}'"
+
+  # Sem porta para bater: a prova de vida é o log de boot.
+  sleep 3
+  if ssh "${VPS_HOST}" "docker logs --tail 20 '${WORKER_CONTAINER_NAME}' 2>&1 | grep -q 'iniciando'"; then
+    log "WORKER OK — ${WORKER_CONTAINER_NAME} de pé"
+    ssh "${VPS_HOST}" "docker logs --tail 5 '${WORKER_CONTAINER_NAME}' 2>&1" || true
+  else
+    printf '\n\033[1;31mWorker não iniciou. Logs:\033[0m\n' >&2
+    ssh "${VPS_HOST}" "docker logs --tail 50 '${WORKER_CONTAINER_NAME}' 2>&1" >&2 || true
+    die "worker não subiu. Veja os logs acima."
+  fi
+else
+  log "DEPLOY_WORKER=0 — pulando o worker"
+fi
 
 # ---------------------------------------------------------------------------
 # 6. Healthcheck

@@ -11,7 +11,8 @@
     "db:new": "supabase migration new",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset --linked",
-    "db:test": "node scripts/db-test.mjs"
+    "db:test": "node scripts/db-test.mjs",
+    "test:integration": "node --experimental-strip-types scripts/it-worker.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",

@@ -31,6 +31,53 @@ if (!url) {
   process.exit(2);
 }
 
+// O host direto (db.<ref>.supabase.co) só publica AAAA — é IPv6-only. Em rede
+// sem IPv6 ele falha com EHOSTUNREACH, e o Plano 1 já tinha registrado essa
+// conexão como frágil. O pooler (Supavisor) publica IPv4 e serve o mesmo banco,
+// mudando só o formato do usuário: postgres.<ref> em vez de postgres.
+//
+// Ordem: tenta o que está configurado; se o host não resolver ou não for
+// alcançável, cai para o pooler automaticamente em vez de exigir que cada
+// máquina descubra isso na mão.
+function poolerFallback(direct) {
+  try {
+    const u = new URL(direct);
+    const parts = u.hostname.split(".");
+    if (parts[0] !== "db" || !parts[1]) return null;
+
+    const ref = parts[1];
+    const region = process.env.SUPABASE_DB_REGION ?? "sa-east-1";
+    const host = process.env.SUPABASE_DB_POOLER_HOST
+      ?? `aws-1-${region}.pooler.supabase.com`;
+
+    return `postgresql://postgres.${ref}:${u.password}@${host}:5432${u.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+const candidates = [url, poolerFallback(url)].filter(Boolean);
+
+async function connectWithFallback() {
+  let lastErr;
+  for (const [i, candidate] of candidates.entries()) {
+    const c = new pg.Client({
+      connectionString: candidate,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+    });
+    try {
+      await c.connect();
+      if (i > 0) console.error("(host direto indisponível — usando o pooler)");
+      return c;
+    } catch (err) {
+      lastErr = err;
+      try { await c.end(); } catch {}
+    }
+  }
+  throw lastErr;
+}
+
 // Remove comentários de linha (-- ... até o fim da linha) ANTES de dividir por ';',
 // senão um statement precedido por comentário na mesma "chunk" seria descartado
 // e a asserção silenciosamente ignorada. (Os arquivos .test.sql não usam '--'
@@ -44,11 +91,16 @@ const statements = sql
   .map((s) => s.trim())
   .filter((s) => s.length > 0);
 
-const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+let client;
+try {
+  client = await connectWithFallback();
+} catch (err) {
+  console.error("ERRO ao conectar no banco:", err.message);
+  process.exit(1);
+}
 
 const failures = [];
 try {
-  await client.connect();
   await client.query("begin");
   for (const stmt of statements) {
     const res = await client.query(stmt);
