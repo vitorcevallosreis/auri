@@ -25,6 +25,12 @@ create index if not exists idx_myia_services_searches_service
 -- visível/gravável pela empresa dona.
 alter table myia_services_searches enable row level security;
 
+-- `create policy` não aceita IF NOT EXISTS, e esta migration foi aplicada uma
+-- vez à mão pelo SQL editor sem ficar registrada em supabase_migrations — o
+-- push seguinte tentaria recriar a policy e abortaria. O drop antes torna a
+-- migration reexecutável.
+drop policy if exists myia_services_searches_tenant_all on myia_services_searches;
+
 create policy myia_services_searches_tenant_all on myia_services_searches
   for all using (company_id = auth_company_id())
   with check (company_id = auth_company_id());
