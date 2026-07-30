@@ -123,6 +123,12 @@ async function handleCreate(body: InstanceRequestBody, callerCompanyId: string) 
         assistant_id: body.assistantId,
         nome: body.nome,
         apiUtilizada: body.apiType || "Evolution",
+        // EXPLÍCITO: a migration 0013 deixou `provider` com default 'cloud',
+        // porque a Cloud API é o destino do Plano 3. Sem marcar aqui, um canal
+        // criado por esta rota (que provisiona instância no EVOLUTION) nasceria
+        // rotulado como 'cloud', e o worker recusaria enviar por ele — a
+        // resposta do agente ficaria PENDING para sempre, sem erro visível.
+        provider: "evolution",
         status: "created",
       },
     ])

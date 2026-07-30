@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase/server"
+import { enqueueAgentTurn } from "@/lib/agent/enqueue"
 
 // Rota de ingress do Evolution API (Plano 2 — P2.3). Recebe o webhook
 // `messages.upsert`, resolve o tenant pela instância e persiste a mensagem
@@ -207,6 +208,25 @@ export async function POST(req: Request) {
     }
 
     const deduped = insertErr?.code === "23505"
+
+    // (7) Enfileira o turno do agente — Plano 3, Caminho A.
+    //
+    //     A Cloud API oficial é o destino, mas a habilitação na Meta leva
+    //     semanas. Até lá o Evolution serve de ponte com número de TESTE, para
+    //     a plataforma atender de verdade. O debounce mora no banco: três
+    //     mensagens seguidas empurram o run_after do mesmo job em vez de criar
+    //     três turnos.
+    //
+    //     Só na primeira gravação: numa reentrega (deduped) o turno já foi
+    //     enfileirado, e enfileirar de novo só adiaria a resposta ao paciente.
+    if (!deduped && channel.assistant_id) {
+      await enqueueAgentTurn({
+        companyId,
+        chatId: chatId as string,
+        assistantId: channel.assistant_id as string,
+      })
+    }
+
     return NextResponse.json({ ok: true, deduped }, { status: 200 })
   } catch (error) {
     console.error("[whatsapp/ingress] erro inesperado", error)

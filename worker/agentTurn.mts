@@ -3,6 +3,7 @@ import { supabaseServer } from "./supabase.mts"
 import type { AgentJob } from "./queue.mts"
 import { buildSystemPrompt, loadPromptContext } from "./prompt.mts"
 import { buildReadTools, type ToolContext } from "./tools.mts"
+import { sendTextToChat } from "./send.mts"
 
 /**
  * Execução de um turno do agente — Plano 3, P3.3.
@@ -26,6 +27,10 @@ const HISTORY_LIMIT = Number(process.env.AGENT_HISTORY_LIMIT ?? 40)
 // TTL do cache do system prompt. 1h para clínica de baixo volume: com 5min o
 // prefixo expira entre um paciente e outro e a clínica paga 1x sempre.
 const CACHE_TTL = process.env.AGENT_CACHE_TTL === "5m" ? "5m" : "1h"
+
+// Flag SEPARADO de AGENT_TURN_ENABLED: permite rodar o agente gerando resposta
+// e revisar na inbox antes de liberar o envio ao paciente. Default desligado.
+const SEND_ENABLED = process.env.AGENT_SEND_ENABLED === "true"
 
 let client: Anthropic | null = null
 
@@ -146,17 +151,39 @@ export async function processAgentTurn(job: AgentJob): Promise<TurnResult> {
       throw new Error("modelo não produziu texto de resposta")
     }
 
-    // (4) Grava a resposta. O ENVIO pelo WhatsApp é o próximo passo do P3.4/3.5
-    //     — por ora a resposta aparece na inbox, revisável por um humano antes
-    //     de qualquer coisa sair para o paciente. Deliberado: soltar o agente
-    //     direto no WhatsApp sem nunca ter rodado contra o modelo de verdade
-    //     seria irresponsável.
-    await persistAssistantDraft(job, finalText)
+    // (4) Grava a resposta e, se o envio estiver habilitado, manda pelo canal.
+    //
+    //     AGENT_SEND_ENABLED é um flag SEPARADO de AGENT_TURN_ENABLED de
+    //     propósito: dá para rodar o agente gerando resposta e revisar na inbox
+    //     antes de deixar qualquer coisa chegar no paciente. Com ele desligado
+    //     a mensagem fica PENDING e um humano decide.
+    const messageId = await persistAssistantMessage(job, finalText)
+
+    let sent = false
+    if (SEND_ENABLED) {
+      const result = await sendTextToChat(job.chat_id, job.company_id, finalText)
+      sent = result.ok
+
+      await supabaseServer
+        .from("myia_messages")
+        .update({
+          status: result.ok ? "SENT" : "FAILED",
+          ...(result.providerMessageId ? { message_id: result.providerMessageId } : {}),
+        })
+        .eq("id", messageId)
+
+      if (!result.ok) {
+        // Não relança: a resposta EXISTE e está na inbox. Refazer o turno
+        // gastaria tokens de novo para gerar quase o mesmo texto; o que falhou
+        // foi o transporte, e isso um humano resolve reenviando.
+        console.error(`[worker] envio falhou no chat ${job.chat_id}: ${result.error}`)
+      }
+    }
 
     await closeRun(runId, "ok", null, usage, Date.now() - startedAt)
 
     return {
-      summary: `resposta gerada (${usage.iterations} ida(s) ao modelo, ${usage.output} tokens de saída, ${usage.cacheRead} de cache)`,
+      summary: `resposta ${sent ? "enviada" : "gravada"} (${usage.iterations} ida(s) ao modelo, ${usage.output} tokens de saída, ${usage.cacheRead} de cache)`,
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -250,19 +277,22 @@ function buildMessages(history: HistoryMessage[]): Anthropic.Beta.BetaMessagePar
 // Persistência
 // ---------------------------------------------------------------------------
 
-async function persistAssistantDraft(job: AgentJob, text: string): Promise<void> {
-  const { error } = await supabaseServer.from("myia_messages").insert([
+async function persistAssistantMessage(job: AgentJob, text: string): Promise<string> {
+  const { data, error } = await supabaseServer.from("myia_messages").insert([
     {
       chat_id: job.chat_id,
       from_me: true,
       message: { conversation: text },
       message_type: "conversation",
       message_timestamp: Math.floor(Date.now() / 1000),
-      // PENDING e não SENT: nada foi para o WhatsApp ainda. O envio entra no
-      // P3.4/3.5, junto com o fluxo de confirmação.
+      // Nasce PENDING mesmo quando o envio está ligado: o status vira SENT ou
+      // FAILED depois da resposta do provedor. Assim uma queda entre gravar e
+      // enviar deixa a mensagem visível como pendente, não como enviada.
       status: "PENDING",
     },
   ])
+  .select("id")
+  .single()
 
   if (error) throw new Error(`falha ao gravar resposta: ${error.message}`)
 
@@ -273,6 +303,8 @@ async function persistAssistantDraft(job: AgentJob, text: string): Promise<void>
       updated_at: new Date().toISOString(),
     })
     .eq("id", job.chat_id)
+
+  return data.id
 }
 
 // ---------------------------------------------------------------------------

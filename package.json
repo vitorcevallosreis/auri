@@ -12,7 +12,7 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset --linked",
     "db:test": "node scripts/db-test.mjs",
-    "test:integration": "node --experimental-strip-types scripts/it-worker.mts && node --experimental-strip-types scripts/it-agent-tools.mts",
+    "test:integration": "node --experimental-strip-types scripts/it-worker.mts && node --experimental-strip-types scripts/it-agent-tools.mts && node --experimental-strip-types scripts/it-agent-send.mts",
     "typecheck:worker": "tsc --noEmit -p worker/tsconfig.json"
   },
   "dependencies": {

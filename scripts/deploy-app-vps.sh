@@ -83,6 +83,7 @@ RUNTIME_KEYS=(
   AGENT_MAX_TOKENS
   AGENT_HISTORY_LIMIT
   AGENT_CACHE_TTL
+  AGENT_SEND_ENABLED
 )
 
 # Envs inlinadas no BUILD (--build-arg). Devem casar com os ARG do Dockerfile.
