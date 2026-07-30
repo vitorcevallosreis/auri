@@ -29,7 +29,6 @@ import { weekDays } from "../CreateProfessional/defaults";
 import { Clock, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Service } from "@/contexts/Services/interfaces";
-import axios from "axios";
 
 // Extended Professional interface with additional properties
 interface ExtendedProfessional extends Professional {
@@ -256,17 +255,20 @@ export default function ProfessionalEditModal({
     }));
   };
 
-  // Handle agreement toggle
-  const handleAgreementToggle = (agreementId: string, checked: boolean) => {
+  // Handle agreement toggle. Trabalha com o NOME do convênio, não com o id:
+  // é o nome que está em `convenios_aceitos` (de onde o formulário carrega) e
+  // é o nome que volta para lá ao salvar. Casar por id quebrava o ida-e-volta —
+  // nada vinha marcado e salvar limpava os convênios do profissional.
+  const handleAgreementToggle = (agreementName: string, checked: boolean) => {
     if (checked) {
       setFormData(prev => ({
         ...prev,
-        agreements: [...prev.agreements, agreementId]
+        agreements: [...prev.agreements, agreementName]
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        agreements: prev.agreements.filter((id: string) => id !== agreementId)
+        agreements: prev.agreements.filter((name: string) => name !== agreementName)
       }));
     }
   };
@@ -395,54 +397,43 @@ export default function ProfessionalEditModal({
         }
       };
 
-      // Prepare data for update - incluindo os campos necessários para o webhook
+      // Só colunas de `myia_professionals_medical`. Serviços e disponibilidade
+      // NÃO são tocados aqui: este modal nunca carrega os que já existem
+      // (`professional.services` não vem do banco), então regravá-los apagaria
+      // a agenda que o cadastro criou. Hoje a agenda que o agente consulta só é
+      // escrita no cadastro — /professionals/availability é de outro schema
+      // (day_of_week/is_available) e chama uma função que não existe no
+      // contexto, então nem salva. Editar agenda de profissional existente
+      // continua pendente.
+      //
+      // `horarios_atendimento` abaixo é o JSON exibido no painel; ele NÃO é o
+      // que o agente lê. Quem manda para o agente é
+      // myia_professional_availability.
       const updatedProfessional = {
-        id: professional.id, // ID do profissional para identificação no webhook
-        company_id: company?.id,
         nome: formData.nome || '',
         formacao: formData.formacao || '',
         registro: formData.registro || '',
         email: formData.email || '',
         telefone: formData.telefone || '',
-        especialidade: formData.especialidade || '', // Campo de especialidade do primeiro passo
-        quem_atende: formData.quem_atende, // Usando a mesma nomenclatura do cadastro
-        agreements: formData.agreements || [],
+        especialidade: formData.especialidade || '',
+        atende_cat_idade: formData.quem_atende,
+        // Já são nomes — ver `handleAgreementToggle`.
+        convenios_aceitos: formData.agreements || [],
         horarios_atendimento: formattedScheduler,
         observacoes: formData.observacoes || '',
-        services: formData.services,
-        specialties: formData.specialties,
         notificame_dia: formData.notificame_dia ?? false,
         notificame_horas: formData.notificame_horas ?? false
       };
-      
-      console.log("Enviando dados para o webhook de edição:", updatedProfessional);
-      
-      // Enviar dados para o webhook de edição
-      const response = await axios.post(
-        "https://webhooks.sejanexa.com.br/webhook/editar-profissional",
-        {
-          body: updatedProfessional,
-        }
-      );
-      
-      console.log("Resposta do webhook:", response.data);
-      
-      if (response.data.status !== "Success" && response.data.status !== "Sucess") {
-        console.error("Erro na resposta do webhook:", response.data);
-        toast.error("Erro ao atualizar profissional, tente novamente mais tarde.");
-        setIsLoading(false);
-        return;
-      }
-      
-      // Atualizar estado local após sucesso no webhook
+
       await updateProfessional(professional.id, updatedProfessional);
-      
+
       toast.success("Profissional atualizado com sucesso");
       setIsLoading(false);
       onClose();
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
       console.error("Erro ao atualizar profissional:", error);
-      toast.error("Erro ao atualizar profissional");
+      toast.error(`Erro ao atualizar profissional: ${message}`);
       setIsLoading(false);
     }
   };
@@ -587,8 +578,8 @@ export default function ProfessionalEditModal({
                           {companyAgreements.map((agreement) => (
                             <Checkbox
                               key={agreement.id}
-                              isSelected={formData.agreements?.includes(agreement.id)}
-                              onValueChange={(checked) => handleAgreementToggle(agreement.id, checked)}
+                              isSelected={formData.agreements?.includes(agreement.name)}
+                              onValueChange={(checked) => handleAgreementToggle(agreement.name, checked)}
                             >
                               {agreement.name}
                             </Checkbox>

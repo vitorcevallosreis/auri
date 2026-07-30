@@ -7,8 +7,9 @@ export const defaultProfessionalsContext: ProfessionalsContextType = {
   error: null,
   fetchProfessionals: async () => {},
   fetchAvailability: async () => {},
-  createProfessional: async () => {},
+  createProfessional: async () => undefined,
   updateProfessional: async () => {},
+  setProfessionalCatalog: async () => {},
   deleteProfessional: async () => {},
   setAvailability: async () => {},
 };

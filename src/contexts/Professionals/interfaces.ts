@@ -83,6 +83,48 @@ export interface ProfessionalAvailability {
   updated_at: string
 }
 
+// Entrada de escrita: espelha as COLUNAS de `myia_professionals_medical`, não a
+// interface `Professional` (que carrega campos derivados). Manter os dois
+// separados evita mandar chave inexistente para o PostgREST, que rejeita a
+// linha inteira com "column ... does not exist".
+export interface NewProfessionalInput {
+  company_id: string
+  nome: string
+  formacao?: string | null
+  especialidade?: string | null
+  registro?: string | null
+  atende_cat_idade?: string[]
+  convenios_aceitos?: string[]
+  horarios_atendimento?: Record<string, unknown> | null
+  email?: string | null
+  telefone?: string | null
+  observacoes?: string | null
+  search_tags?: string[]
+  notificame_dia?: boolean
+  notificame_horas?: boolean
+}
+
+export type ProfessionalUpdateInput = Partial<Omit<NewProfessionalInput, "company_id">>
+
+// Um dia do seletor de horários do formulário.
+export interface ProfessionalScheduleDay {
+  enabled?: boolean
+  opening?: string | null
+  closing?: string | null
+}
+
+// Serviços + agenda semanal escolhidos no formulário de cadastro. É o que vira
+// `myia_professional_services` e `myia_professional_availability` — sem estas
+// duas, o profissional existe mas o agente nunca acha horário para ele.
+export interface ProfessionalCatalogInput {
+  services: Array<{
+    service_id: string
+    tipo?: "INDIVIDUAL" | "GRUPO" | "AMBOS"
+    amount?: number
+  }>
+  scheduler: Record<string, ProfessionalScheduleDay>
+}
+
 export interface ProfessionalsContextType {
   professionals: Professional[]
   availability: ProfessionalAvailability[]
@@ -91,11 +133,16 @@ export interface ProfessionalsContextType {
   fetchProfessionals: (company_id: UUID) => Promise<void>
   fetchAvailability: (professionalId: UUID) => Promise<void>
   createProfessional: (
-    professional: Omit<Professional, "id" | "created_at" | "updated_at">
+    professional: NewProfessionalInput,
+    catalog?: ProfessionalCatalogInput
   ) => Promise<Professional | undefined>
   updateProfessional: (
     id: UUID,
-    professional: Partial<Professional>
+    professional: ProfessionalUpdateInput
+  ) => Promise<void>
+  setProfessionalCatalog: (
+    professionalId: UUID,
+    catalog: ProfessionalCatalogInput
   ) => Promise<void>
   deleteProfessional: (id: UUID) => Promise<void>
   setAvailability: (
