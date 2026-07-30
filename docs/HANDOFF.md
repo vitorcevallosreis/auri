@@ -75,10 +75,10 @@ errados para conversa de WhatsApp). O agente aqui é **stateless por turno**, en
 
 | Fase | Estado | Entrega |
 |---|---|---|
-| P3.0 Habilitação na Meta | ❌ **NÃO INICIADA — BLOQUEIA TUDO** | Business Verification, App Review, Embedded Signup, templates |
+| P3.0 Habilitação na Meta | ❌ não iniciada — trava a Cloud API, **não** o Caminho A | Business Verification, App Review, Embedded Signup, templates |
 | P3.1 Canal Cloud API | ✅ código pronto, **não testado contra a Meta** | migration 0013, adapter, webhook assinado, Embedded Signup, cripto do token |
 | P3.2 Fila + worker | ✅ pronto e testado | migration 0014, `worker/`, debounce, `Dockerfile.worker` |
-| P3.3 Turno do agente | ✅ código pronto, **modelo nunca chamado** | migration 0015, prompt, 5 tools de leitura, observabilidade |
+| P3.3 Turno do agente | ✅ código pronto, **modelo nunca chamado** (falta `ANTHROPIC_API_KEY`) | migration 0015, prompt, 5 tools de leitura, observabilidade |
 | P3.4 Tools de escrita | ⬜ | agendar/remarcar/cancelar + constraint anti-overbooking |
 | P3.5 Escalonamento humano | 🟡 envio JÁ FEITO no Caminho A | falta `transferir_para_humano` |
 | P3.6 UI Agentes IA | ⬜ | config de tools, remover seletor de LLM |
