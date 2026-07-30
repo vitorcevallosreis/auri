@@ -1,0 +1,35 @@
+{
+  // tsconfig próprio do worker.
+  //
+  // O tsconfig da raiz inclui apenas `**/*.ts` e `**/*.tsx` — `.mts` NÃO casa
+  // com esse glob, então os arquivos deste diretório passavam sem nenhuma
+  // verificação de tipo e `tsc --noEmit` na raiz dava falso "sem erros".
+  //
+  // Também há diferença real de plataforma: o app roda no bundler do Next
+  // (moduleResolution "bundler", lib DOM); o worker roda no Node 22 direto, com
+  // --experimental-strip-types, que exige extensão explícita no import
+  // (./queue.mts, ../src/lib/supabase/server.ts). Isso é "nodenext" +
+  // allowImportingTsExtensions, incompatível com a config do app.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    // O worker importa por caminho com extensão .ts/.mts, como o Node executa.
+    "allowImportingTsExtensions": true,
+
+    // Espelha o que o type stripping do Node aceita: só apagar tipos, nunca
+    // transformar código. Recursos como enum e parameter property quebrariam em
+    // runtime — melhor o compilador reclamar aqui do que o container morrer.
+    "verbatimModuleSyntax": true
+  },
+  "include": ["**/*.mts"]
+}

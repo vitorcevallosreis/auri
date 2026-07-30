@@ -1,4 +1,4 @@
-import { supabaseServer } from "../src/lib/supabase/server.ts"
+import { supabaseServer } from "./supabase.mts"
 
 /**
  * Acesso à fila de turnos do agente (migration 0014).

@@ -35,9 +35,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --chown=worker:nodejs package.json ./
 COPY --chown=worker:nodejs worker ./worker
 
-# O worker importa src/lib/supabase/server.ts por caminho relativo, para não
-# duplicar a construção do client (e não divergir dela com o tempo).
-COPY --chown=worker:nodejs src/lib/supabase ./src/lib/supabase
+# O worker é autocontido: tem o próprio client Supabase (worker/supabase.mts).
+# Importar o do app faria o Node carregar um .ts que ele classifica como
+# CommonJS, funcionando só por reparse — dependência frágil para subir em
+# produção.
 
 USER worker
 

@@ -76,6 +76,13 @@ RUNTIME_KEYS=(
   WORKER_POLL_INTERVAL_MS
   WORKER_CLAIM_BATCH
   WORKER_REAP_TIMEOUT_SECONDS
+  # --- Agente (P3.3). Só o worker usa; o app nunca fala com a Anthropic. ---
+  ANTHROPIC_API_KEY
+  AGENT_MODEL
+  AGENT_EFFORT
+  AGENT_MAX_TOKENS
+  AGENT_HISTORY_LIMIT
+  AGENT_CACHE_TTL
 )
 
 # Envs inlinadas no BUILD (--build-arg). Devem casar com os ARG do Dockerfile.

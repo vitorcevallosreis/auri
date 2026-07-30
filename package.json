@@ -12,9 +12,11 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset --linked",
     "db:test": "node scripts/db-test.mjs",
-    "test:integration": "node --experimental-strip-types scripts/it-worker.mts"
+    "test:integration": "node --experimental-strip-types scripts/it-worker.mts && node --experimental-strip-types scripts/it-agent-tools.mts",
+    "typecheck:worker": "tsc --noEmit -p worker/tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@aws-sdk/client-s3": "^3.758.0",
     "@aws-sdk/s3-request-presigner": "^3.758.0",
     "@ffmpeg/core": "^0.12.10",
