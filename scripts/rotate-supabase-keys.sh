@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
-# Aplica as chaves novas do Supabase depois de regenerar o JWT secret.
+# Rotaciona as chaves LEGADAS (anon / service_role) regenerando o JWT secret.
+#
+# ⚠️  PREFIRA scripts/apply-new-supabase-keys.sh.
+#
+# Este caminho DERRUBA TODAS AS SESSÕES: regenerar o JWT secret reassina os
+# tokens e invalida os que já foram emitidos. O outro script migra para o
+# sistema novo de chaves (sb_publishable_ / sb_secret_), que é independente do
+# JWT secret — rotaciona sem deslogar ninguém, permite revogar uma chave
+# individual, e é obrigatório de qualquer forma até o fim de 2026, quando as
+# legadas serão descontinuadas.
+#
+# Este arquivo continua aqui para um caso específico: se o próprio JWT SECRET
+# vazar, regenerá-lo é a única saída — e aí derrubar as sessões é o objetivo,
+# não o efeito colateral.
 #
 # A regeneração em si é EXCLUSIVA DO DASHBOARD — a Management API não expõe
 # esse endpoint. Este script cuida de tudo o que vem depois.

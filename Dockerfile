@@ -39,7 +39,11 @@ COPY . .
 # --- NEXT_PUBLIC_* (build-time). Lista completa do que o código em src/ lê. ---
 # Obrigatórias (o app quebra sem elas):
 ARG NEXT_PUBLIC_SUPABASE_URL
+# Duas chaves públicas, uma de cada geração. `src/lib/supabase/keys.ts` prefere a
+# PUBLISHABLE e cai para a ANON — passar as duas permite migrar sem um deploy
+# intermediário em que nenhuma das duas existe.
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_SUPABASE_STORAGE_URL
 ARG NEXT_PUBLIC_APP_URL
 # Integrações:
@@ -58,6 +62,7 @@ ARG NEXT_PUBLIC_TEST_PHONE
 # para o ambiente do RUN).
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
     NEXT_PUBLIC_SUPABASE_STORAGE_URL=$NEXT_PUBLIC_SUPABASE_STORAGE_URL \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_PUBLIC_WEBHOOK=$NEXT_PUBLIC_WEBHOOK \
@@ -70,10 +75,14 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# `src/lib/supabase/server.ts` faz throw no import se SUPABASE_SERVICE_ROLE_KEY
-# faltar. O build do Next importa esse módulo ao coletar as rotas de API, então
+# `src/lib/supabase/server.ts` faz throw no import se não houver chave secreta.
+# O build do Next importa esse módulo ao coletar as rotas de API, então
 # precisamos de um valor PLACEHOLDER (não-secreto) só para o build passar. Em
 # runtime o valor real vem do --env-file.
+#
+# Basta preencher a legada: server.ts aceita SUPABASE_SECRET_KEY OU
+# SUPABASE_SERVICE_ROLE_KEY, e para o build tanto faz qual das duas satisfaz a
+# checagem — nenhuma das duas é usada de verdade aqui.
 #
 # O placeholder vai INLINE no RUN, e não como `ENV`, de propósito: como ENV ele
 # virava uma camada da imagem e o BuildKit emitia

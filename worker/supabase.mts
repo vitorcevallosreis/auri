@@ -17,15 +17,20 @@ import { createClient } from "@supabase/supabase-js"
  */
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
+// Mesma precedência de src/lib/supabase/keys.ts: chave nova primeiro, legada
+// como queda. Aqui a leitura é direta porque o worker roda em Node puro — não
+// há substituição de build para respeitar, ao contrário do bundle do Next.
+const supabaseSecretKey =
+  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseSecretKey) {
   throw new Error(
-    "Credenciais do Supabase ausentes no worker (NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY)",
+    "Credenciais do Supabase ausentes no worker: defina NEXT_PUBLIC_SUPABASE_URL e uma de SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY",
   )
 }
 
-export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey, {
+export const supabaseServer = createClient(supabaseUrl, supabaseSecretKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,

@@ -57,7 +57,11 @@ APP_ENV_FILE="${APP_ENV_FILE:-${REPO_ROOT}/../.night-work/app-deploy.env}"
 
 # Envs lidas em RUNTIME pelo server.js (entram no --env-file do docker run).
 RUNTIME_KEYS=(
+  # Duas gerações de chave secreta. src/lib/supabase/server.ts e o worker
+  # preferem SUPABASE_SECRET_KEY e caem para SUPABASE_SERVICE_ROLE_KEY;
+  # mandar as duas permite migrar sem um deploy intermediário quebrado.
   SUPABASE_SERVICE_ROLE_KEY
+  SUPABASE_SECRET_KEY
   EVOLUTION_API_URL
   EVOLUTION_API_KEY
   EVOLUTION_WEBHOOK_SECRET
@@ -90,6 +94,7 @@ RUNTIME_KEYS=(
 BUILD_KEYS=(
   NEXT_PUBLIC_SUPABASE_URL
   NEXT_PUBLIC_SUPABASE_ANON_KEY
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   NEXT_PUBLIC_SUPABASE_STORAGE_URL
   NEXT_PUBLIC_APP_URL
   NEXT_PUBLIC_WEBHOOK
@@ -104,9 +109,7 @@ BUILD_KEYS=(
 # Obrigatórias: sem elas o build/boot quebra (config.ts e server.ts dão throw).
 REQUIRED_KEYS=(
   NEXT_PUBLIC_SUPABASE_URL
-  NEXT_PUBLIC_SUPABASE_ANON_KEY
   NEXT_PUBLIC_APP_URL
-  SUPABASE_SERVICE_ROLE_KEY
   EVOLUTION_API_URL
   EVOLUTION_API_KEY
   EVOLUTION_WEBHOOK_SECRET
@@ -132,8 +135,21 @@ missing=()
 for k in "${REQUIRED_KEYS[@]}"; do
   [[ -n "${!k:-}" ]] || missing+=("$k")
 done
+
+# As chaves do Supabase existem em duas geracoes (legada e nova). Exigir um nome
+# fixo bloquearia justamente a migracao: basta UMA das duas de cada par.
+for pair in \
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  "SUPABASE_SECRET_KEY SUPABASE_SERVICE_ROLE_KEY"
+do
+  read -r nova legada <<<"$pair"
+  if [[ -z "${!nova:-}" && -z "${!legada:-}" ]]; then
+    missing+=("${nova} (ou a legada ${legada})")
+  fi
+done
+
 if (( ${#missing[@]} > 0 )); then
-  die "faltam variáveis obrigatórias em ${APP_ENV_FILE}: ${missing[*]}"
+  die "faltam variaveis obrigatorias em ${APP_ENV_FILE}: ${missing[*]}"
 fi
 log "env file OK (${#BUILD_KEYS[@]} build-args, ${#RUNTIME_KEYS[@]} runtime)"
 
