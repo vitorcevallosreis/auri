@@ -47,9 +47,20 @@ const rand = mulberry32(20260801);
 const pick = (arr) => arr[Math.floor(rand() * arr.length)];
 const between = (min, max) => min + Math.floor(rand() * (max - min + 1));
 
-/** id determinístico: prefixo identifica a entidade, o contador vai no fim. */
+// Discriminador da empresa dentro do próprio id.
+//
+// Sem isto o seed é DESTRUTIVO entre empresas: os ids eram fixos, a limpeza
+// apagava por prefixo em toda a tabela, e rodar para a segunda empresa apagava
+// as linhas da primeira em vez de somar. Com o discriminador, cada empresa tem
+// o seu próprio espaço de ids e a limpeza só alcança o que é dela.
+const COMPANY_TAG = COMPANY_ID.replace(/-/g, "").slice(0, 4);
+
+/** id determinístico: prefixo = entidade, 2º grupo = empresa, fim = contador. */
 const demoId = (prefix, n) =>
-  `${prefix}-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  `${prefix}-${COMPANY_TAG}-4000-8000-${String(n).padStart(12, "0")}`;
+
+/** Padrão LIKE que casa só com as linhas de demonstração DESTA empresa. */
+const demoLike = (prefix) => `${prefix}-${COMPANY_TAG}-%`;
 
 const PREFIX = {
   specialty: "d1000000",
@@ -149,20 +160,30 @@ try {
   if (!companyRows.length) throw new Error(`empresa ${COMPANY_ID} não existe`);
   console.log(`empresa: ${companyRows[0].name} (${COMPANY_ID})`);
 
-  // -- Limpeza das sobras de execuções anteriores (só linhas com prefixo demo) --
-  // Ordem respeita as FKs. Appointments cascateia para feedback, chat para messages.
-  for (const [table, prefix] of [
-    ["myia_appointment_feedback", PREFIX.feedback],
-    ["myia_services_searches", PREFIX.search],
-    ["myia_messages", PREFIX.message],
-    ["myia_chat", PREFIX.chat],
-    ["myia_appointments", PREFIX.appointment],
-    ["myia_contacts", PREFIX.contact],
-    ["myia_professionals_medical", PREFIX.professional],
-    ["myia_services", PREFIX.service],
-    ["myia_specialties", PREFIX.specialty],
+  // -- Limpeza das sobras de execuções anteriores --
+  //
+  // Dois filtros, de propósito: o padrão do id já é exclusivo desta empresa, e
+  // o company_id repete a restrição onde a coluna existe. É barato e garante
+  // que um erro no padrão não vaze para o tenant vizinho. myia_messages não tem
+  // company_id (o vínculo é via chat), então ali só o padrão vale — e por isso
+  // ele precisa mesmo carregar o discriminador da empresa.
+  // Ordem respeita as FKs.
+  for (const [table, prefix, temCompanyId] of [
+    ["myia_appointment_feedback", PREFIX.feedback, true],
+    ["myia_services_searches", PREFIX.search, true],
+    ["myia_messages", PREFIX.message, false],
+    ["myia_chat", PREFIX.chat, true],
+    ["myia_appointments", PREFIX.appointment, true],
+    ["myia_contacts", PREFIX.contact, true],
+    ["myia_professionals_medical", PREFIX.professional, true],
+    ["myia_services", PREFIX.service, true],
+    ["myia_specialties", PREFIX.specialty, true],
   ]) {
-    await q(`delete from ${table} where id::text like $1`, [`${prefix}-%`]);
+    if (temCompanyId) {
+      await q(`delete from ${table} where id::text like $1 and company_id = $2`, [demoLike(prefix), COMPANY_ID]);
+    } else {
+      await q(`delete from ${table} where id::text like $1`, [demoLike(prefix)]);
+    }
   }
 
   // ------------------------------------------------------------------ catálogo
