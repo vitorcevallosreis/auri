@@ -29,6 +29,10 @@ import { weekDays } from "../CreateProfessional/defaults";
 import { Clock, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Service } from "@/contexts/Services/interfaces";
+import DadosPrescricao, {
+  cpfValido,
+  type DadosPrescricaoValores,
+} from "../DadosPrescricao";
 
 // Extended Professional interface with additional properties
 interface ExtendedProfessional extends Professional {
@@ -83,7 +87,12 @@ export default function ProfessionalEditModal({
     observacoes?: string;
     notificame_dia?: boolean;
     notificame_horas?: boolean;
-  }>({ 
+    cpf?: string;
+    data_nascimento?: string;
+    conselho_sigla?: string;
+    conselho_numero?: string;
+    conselho_uf?: string;
+  }>({
     quem_atende: [], 
     agreements: [], 
     specialties: [], 
@@ -158,7 +167,15 @@ export default function ProfessionalEditModal({
         email: professional.email || "",
         telefone: professional.telefone || "",
         especialidade: professional.especialidade || "",
-        
+
+        // Prescrição digital (Memed). Vazio é o normal: o backfill de 0026 só
+        // conseguiu preencher o conselho a partir do texto livre de `registro`.
+        cpf: professional.cpf || "",
+        data_nascimento: professional.data_nascimento || "",
+        conselho_sigla: professional.conselho_sigla || "",
+        conselho_numero: professional.conselho_numero || "",
+        conselho_uf: professional.conselho_uf || "",
+
         // Age categories
         quem_atende: Array.isArray(professional.atende_cat_idade) 
           ? professional.atende_cat_idade 
@@ -332,6 +349,16 @@ export default function ProfessionalEditModal({
         return;
       }
 
+      // Os campos da Memed são opcionais, mas o que for preenchido tem de
+      // caber nos CHECKs de 0026. Sem esta checagem o erro chegaria como uma
+      // violação de constraint crua vinda do PostgREST, sem dizer qual campo.
+      if (formData.cpf && !cpfValido(formData.cpf)) {
+        toast.error("CPF inválido. Deixe em branco se ainda não tiver o dado.");
+        setSelectedTab("info");
+        setIsLoading(false);
+        return;
+      }
+
       if (!formData.quem_atende || formData.quem_atende.length === 0) {
         toast.error("Selecione pelo menos uma categoria de idade");
         setSelectedTab("attendance");
@@ -422,7 +449,14 @@ export default function ProfessionalEditModal({
         horarios_atendimento: formattedScheduler,
         observacoes: formData.observacoes || '',
         notificame_dia: formData.notificame_dia ?? false,
-        notificame_horas: formData.notificame_horas ?? false
+        notificame_horas: formData.notificame_horas ?? false,
+        // NULL, não string vazia: `cpf` e `conselho_uf` têm CHECK de formato e
+        // `data_nascimento` é `date` — os três recusariam "".
+        cpf: formData.cpf || null,
+        data_nascimento: formData.data_nascimento || null,
+        conselho_sigla: formData.conselho_sigla || null,
+        conselho_numero: formData.conselho_numero || null,
+        conselho_uf: formData.conselho_uf || null,
       };
 
       await updateProfessional(professional.id, updatedProfessional);
@@ -516,6 +550,13 @@ export default function ProfessionalEditModal({
                       onChange={(e) => handleInputChange("telefone", e.target.value)}
                       isRequired
                     />
+
+                    <div className="pt-2 border-t">
+                      <DadosPrescricao
+                        valores={formData as DadosPrescricaoValores}
+                        onChange={handleInputChange}
+                      />
+                    </div>
                   </div>
                 </Tab>
 

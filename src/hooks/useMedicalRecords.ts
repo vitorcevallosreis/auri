@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { describeSupabaseError } from './useAppointmentMetrics';
 
@@ -14,12 +14,40 @@ export interface MedicalRecordSummary {
   reviewStatus: ReviewStatus;
 }
 
+export type FieldType = 'text' | 'textarea' | 'select';
+
+/** Um campo do modelo, como 0023 o descreve em `myia_record_templates.fields`. */
+export interface TemplateField {
+  key: string;
+  label: string;
+  type: FieldType;
+  icon?: string;
+  hint?: string;
+  placeholder?: string;
+  options?: string[];
+  /** Renderiza em superfície de marca, acima da grade. Tipicamente a queixa. */
+  highlight?: boolean;
+}
+
+export interface RecordTemplate {
+  id: string;
+  name: string;
+  specialty: string | null;
+  description: string | null;
+  fields: TemplateField[];
+  isSystem: boolean;
+}
+
 export interface MedicalRecordDetail extends MedicalRecordSummary {
-  chiefComplaint: string | null;
-  anamnesis: string | null;
-  physicalExam: string | null;
-  assessment: string | null;
-  plan: string | null;
+  /**
+   * Valores do prontuário, na chave que o modelo define.
+   *
+   * Substitui as cinco colunas fixas na LEITURA. As colunas continuam no banco
+   * e continuam sendo escritas por quem escrevia antes — o gatilho de 0023 as
+   * copia para cá, então esta é a única fonte que a tela precisa consultar.
+   */
+  content: Record<string, string | null>;
+  template: RecordTemplate | null;
   aiModel: string | null;
   aiGeneratedAt: string | null;
   reviewedAt: string | null;
@@ -27,6 +55,28 @@ export interface MedicalRecordDetail extends MedicalRecordSummary {
   startTime: string | null;
   endTime: string | null;
 }
+
+/** Normaliza a linha crua de myia_record_templates. */
+function toTemplate(t: any): RecordTemplate | null {
+  if (!t) return null;
+  const row = Array.isArray(t) ? t[0] : t;
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    specialty: row.specialty ?? null,
+    description: row.description ?? null,
+    // `fields` tem CHECK de forma no banco (0023), mas nada garante que a linha
+    // veio de lá — um cache velho do PostgREST ou um mock devolveriam qualquer
+    // coisa. O filtro abaixo é o que impede a tela de quebrar num `.map`.
+    fields: Array.isArray(row.fields)
+      ? row.fields.filter((f: any) => f && typeof f.key === 'string' && typeof f.label === 'string')
+      : [],
+    isSystem: row.is_system ?? row.company_id == null,
+  };
+}
+
+const TEMPLATE_SELECT = 'myia_record_templates(id, name, specialty, description, fields, is_system)';
 
 export const PAGE_SIZE = 25;
 
@@ -126,12 +176,32 @@ export function useMedicalRecords(
   return { records, total, loading, error };
 }
 
+export type ReviewAction = 'review' | 'sign';
+
+/**
+ * Mensagens dos erros que a RPC levanta de propósito (0022).
+ *
+ * O `describeSupabaseError` genérico devolveria o texto cru do Postgres com
+ * SQLSTATE colado; aqui os casos previstos têm nome próprio. O importante é o
+ * '23514': ele significa que o estado no banco não é o que a tela está
+ * mostrando — outra aba assinou primeiro — e a resposta certa é recarregar, não
+ * insistir no clique.
+ */
+function describeReviewError(err: any): string {
+  const code = err?.code;
+  if (code === '42501') return 'Somente o profissional responsável pode assinar este prontuário.';
+  if (code === 'P0002') return 'Prontuário não encontrado.';
+  if (code === '23514') return 'O estado deste prontuário mudou. Recarregue a página.';
+  return describeSupabaseError(err);
+}
+
 /** Um prontuário. Sem filtro por profissional: o RLS já garante que só os dele
  *  são alcançáveis, então um id de outro médico devolve simplesmente nada. */
 export function useMedicalRecord(id: string) {
   const [record, setRecord] = useState<MedicalRecordDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState<ReviewAction | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,7 +213,7 @@ export function useMedicalRecord(id: string) {
         const { data, error: qErr } = await supabase
           .from('myia_medical_records')
           .select(
-            `id, record_date, source, review_status, chief_complaint, anamnesis, physical_exam, assessment, plan, ai_model, ai_generated_at, reviewed_at, signed_at, ${FK_APPOINTMENT}(cliente_nome, start_time, end_time, myia_services(name))`
+            `id, record_date, source, review_status, content, ai_model, ai_generated_at, reviewed_at, signed_at, ${TEMPLATE_SELECT}, ${FK_APPOINTMENT}(cliente_nome, start_time, end_time, myia_services(name))`
           )
           .eq('id', id)
           .maybeSingle();
@@ -162,11 +232,8 @@ export function useMedicalRecord(id: string) {
 
         setRecord({
           ...toSummary(data),
-          chiefComplaint: data.chief_complaint,
-          anamnesis: data.anamnesis,
-          physicalExam: data.physical_exam,
-          assessment: data.assessment,
-          plan: data.plan,
+          content: (data.content ?? {}) as Record<string, string | null>,
+          template: toTemplate((data as any).myia_record_templates),
           aiModel: data.ai_model,
           aiGeneratedAt: data.ai_generated_at,
           reviewedAt: data.reviewed_at,
@@ -191,5 +258,102 @@ export function useMedicalRecord(id: string) {
     };
   }, [id]);
 
-  return { record, loading, error };
+  /**
+   * Marca revisado ou assina, via a RPC de 0022.
+   *
+   * Não é um UPDATE do PostgREST porque o médico não tem — e não deve ter —
+   * permissão de UPDATE nesta tabela: a RPC é a única porta, e ela toca apenas
+   * as três colunas de revisão.
+   *
+   * O estado local é atualizado com a LINHA QUE O BANCO DEVOLVEU, não com um
+   * palpite otimista. Os carimbos de horário são gerados pelo `now()` do
+   * servidor; escrever `new Date()` aqui mostraria na tela um horário que não é
+   * o que ficou gravado.
+   */
+  const applyReview = useCallback(
+    async (action: ReviewAction): Promise<{ ok: boolean; message?: string }> => {
+      if (!id) return { ok: false };
+      setSaving(action);
+      try {
+        const { data, error: rpcErr } = await supabase
+          .rpc('sign_medical_record', { p_record_id: id, p_action: action })
+          .single();
+
+        if (rpcErr) throw rpcErr;
+
+        const row: any = data;
+        setRecord((prev) =>
+          prev
+            ? {
+                ...prev,
+                reviewStatus: row.review_status,
+                reviewedAt: row.reviewed_at,
+                signedAt: row.signed_at,
+              }
+            : prev
+        );
+        return { ok: true };
+      } catch (err: any) {
+        const message = describeReviewError(err);
+        console.error('[useMedicalRecord] Erro ao %s prontuário:', action, message, err);
+        return { ok: false, message };
+      } finally {
+        setSaving(null);
+      }
+    },
+    [id]
+  );
+
+  return { record, loading, error, saving, applyReview };
+}
+
+/**
+ * Catálogo de modelos disponíveis para a clínica.
+ *
+ * Traz o do sistema E o da própria empresa numa consulta só — a policy de
+ * leitura de 0023 já une os dois, então não há dois caminhos a manter aqui.
+ * Arquivados ficam de fora: eles existem para não quebrar prontuários antigos
+ * que apontam para eles, não para serem escolhidos de novo.
+ */
+export function useRecordTemplates() {
+  const [templates, setTemplates] = useState<RecordTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTemplates() {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: qErr } = await supabase
+          .from('myia_record_templates')
+          .select('id, name, specialty, description, fields, is_system')
+          .is('archived_at', null)
+          .order('specialty', { ascending: true, nullsFirst: false })
+          .order('name', { ascending: true });
+
+        if (qErr) throw qErr;
+        if (cancelled) return;
+
+        setTemplates((data ?? []).map(toTemplate).filter(Boolean) as RecordTemplate[]);
+      } catch (err: any) {
+        if (cancelled) return;
+        const message = describeSupabaseError(err);
+        console.error('[useRecordTemplates] Erro ao listar modelos:', message, err);
+        setError(message);
+        setTemplates([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchTemplates();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { templates, loading, error };
 }

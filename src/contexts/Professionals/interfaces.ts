@@ -69,6 +69,16 @@ export interface Professional {
   created_at: string
   notificame_dia?: boolean
   notificame_horas?: boolean
+
+  // Dados exigidos pela Memed para cadastrar o prescritor (migration 0026).
+  // Opcionais de propósito: um profissional sem eles continua atendendo
+  // normalmente — só não prescreve. `cpf` são 11 dígitos sem pontuação (há
+  // CHECK no banco) e `data_nascimento` é ISO (YYYY-MM-DD).
+  cpf?: string | null
+  data_nascimento?: string | null
+  conselho_sigla?: string | null
+  conselho_numero?: string | null
+  conselho_uf?: string | null
 }
 
 export interface ProfessionalAvailability {
@@ -102,6 +112,11 @@ export interface NewProfessionalInput {
   search_tags?: string[]
   notificame_dia?: boolean
   notificame_horas?: boolean
+  cpf?: string | null
+  data_nascimento?: string | null
+  conselho_sigla?: string | null
+  conselho_numero?: string | null
+  conselho_uf?: string | null
 }
 
 export type ProfessionalUpdateInput = Partial<Omit<NewProfessionalInput, "company_id">>

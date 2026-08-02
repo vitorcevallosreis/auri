@@ -6,7 +6,15 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SourceBadge, ReviewBadge } from "@/components/professional/RecordBadges"
-import { Search, ChevronLeft, ChevronRight, ClipboardList } from "lucide-react"
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Mic,
+  LayoutTemplate,
+  Plus,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ABAS, type IProntuarioListModel } from "./model"
 
@@ -14,18 +22,69 @@ const dataCurta = (iso: string) =>
   new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
     .format(new Date(`${iso}T12:00:00`))
 
+/** Primeira e última palavra do nome — mesma regra do detalhe. */
+const iniciais = (nome: string) => {
+  const partes = nome.trim().split(/\s+/).filter(Boolean)
+  if (partes.length === 0) return "?"
+  const primeira = partes[0][0]
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ""
+  return (primeira + ultima).toUpperCase()
+}
+
 export function ProntuarioListView(m: IProntuarioListModel) {
   return (
     <ProfessionalLayout>
       <div className="space-y-8">
-        <header>
-          <h1 className="text-[2rem] font-semibold leading-[1.2]">Prontuário</h1>
-          <p className="mt-2 text-muted-foreground">
-            {m.loading
-              ? "Carregando…"
-              : `${m.total} ${m.total === 1 ? "atendimento registrado" : "atendimentos registrados"}`}
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[2rem] font-semibold leading-[1.2]">Prontuário</h1>
+            <p className="mt-2 text-muted-foreground">
+              {m.loading
+                ? "Carregando…"
+                : `${m.total} ${m.total === 1 ? "atendimento registrado" : "atendimentos registrados"}`}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link
+              href="/pro/prontuario/modelos"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              Modelos
+            </Link>
+            <Button asChild>
+              <Link href="/pro/prontuario/novo">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo prontuário
+              </Link>
+            </Button>
+          </div>
         </header>
+
+        {/* Porta de entrada da escuta assistida. Fica ACIMA dos filtros porque
+            é a única ação de escrita desta tela — tudo abaixo é consulta ao que
+            já aconteceu. O cartão inteiro é o link; o "Iniciar" é affordance
+            visual, não um segundo elemento focável dentro do mesmo alvo. */}
+        <Link
+          href="/pro/prontuario/escuta"
+          className="group flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-accent/40 bg-accent/15 p-5 transition-colors hover:bg-accent/25"
+        >
+          <div className="flex items-center gap-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-foreground">
+              <Mic className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <p className="font-medium">Iniciar a escuta do prontuário</p>
+              <p className="text-sm text-muted-foreground">
+                A IA acompanha a consulta e redige o rascunho para você revisar.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-sm font-medium">
+            Iniciar
+            <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
 
         {m.error && (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -89,18 +148,21 @@ export function ProntuarioListView(m: IProntuarioListModel) {
                 <li key={r.id}>
                   <Link
                     href={`/pro/prontuario/${r.id}`}
-                    className="flex flex-wrap items-center gap-x-5 gap-y-2 px-6 py-4 transition-colors hover:bg-muted/60"
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4 transition-colors hover:bg-muted/60"
                   >
-                    <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
-                      {dataCurta(r.recordDate)}
+                    {/* Mesmo selo de iniciais da folha de rosto do detalhe: a
+                        linha e a tela que ela abre passam a se reconhecer. */}
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/20 text-sm font-medium"
+                      aria-hidden
+                    >
+                      {iniciais(r.patient)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{r.patient}</p>
-                      {r.service && (
-                        <p className="truncate text-sm text-muted-foreground">
-                          {r.service}
-                        </p>
-                      )}
+                      <p className="truncate text-sm text-muted-foreground">
+                        {[dataCurta(r.recordDate), r.service].filter(Boolean).join(" · ")}
+                      </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <SourceBadge source={r.source} />

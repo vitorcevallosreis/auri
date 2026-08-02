@@ -218,6 +218,13 @@ export const ProfessionalsProvider: React.FC<{ children: React.ReactNode }> = ({
         "search_tags",
         "notificame_dia",
         "notificame_horas",
+        // Prescrição digital (0026). Entram na allowlist porque o modal de
+        // edição é o único lugar onde a clínica preenche isso.
+        "cpf",
+        "data_nascimento",
+        "conselho_sigla",
+        "conselho_numero",
+        "conselho_uf",
       ] as const
 
       const updateData: Record<string, unknown> = {}

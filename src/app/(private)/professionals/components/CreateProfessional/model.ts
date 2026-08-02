@@ -168,6 +168,11 @@ const useCreateProfessionalModel = (
       registro: "",
       email: "",
       telefone: "",
+      cpf: "",
+      data_nascimento: "",
+      conselho_sigla: "",
+      conselho_numero: "",
+      conselho_uf: "",
       quem_atende: [],
       scheduler: {
         friday: {
@@ -254,6 +259,13 @@ const useCreateProfessionalModel = (
         convenios_aceitos: agreementNames,
         horarios_atendimento: data.scheduler,
         observacoes: data.observacoes || null,
+        // NULL e não "": `cpf` e `conselho_uf` têm CHECK de formato e
+        // `data_nascimento` é `date`.
+        cpf: data.cpf || null,
+        data_nascimento: data.data_nascimento || null,
+        conselho_sigla: data.conselho_sigla || null,
+        conselho_numero: data.conselho_numero || null,
+        conselho_uf: data.conselho_uf || null,
       }
 
       const catalogo = {
@@ -320,7 +332,17 @@ const useCreateProfessionalModel = (
     setValue("registro", professional.registro || "")
     setValue("email", professional.email || "")
     setValue("telefone", professional.telefone || "")
-    
+
+    // Os dados da Memed também são recarregados: este fluxo grava o formulário
+    // inteiro por cima do cadastro, então um campo não preenchido aqui viraria
+    // NULL no banco — e apagaria o CPF que a clínica já tinha digitado.
+    setValue("cpf", professional.cpf || "")
+    setValue("data_nascimento", professional.data_nascimento || "")
+    setValue("conselho_sigla", professional.conselho_sigla || "")
+    setValue("conselho_numero", professional.conselho_numero || "")
+    setValue("conselho_uf", professional.conselho_uf || "")
+
+
     // Inicializar outros campos com valores padrão para nova criação
     // Desta forma, garantimos que os campos estejam vazios para preenchimento nos próximos passos
     setValue("agreements", [])

@@ -1,13 +1,20 @@
 "use client"
 
-import { useParams } from "next/navigation"
-import { useMedicalRecord } from "@/hooks/useMedicalRecords"
+import { Suspense } from "react"
+import { useProntuarioDetailModel } from "./model"
 import { ProntuarioDetailView } from "./view"
 
+function Detalhe() {
+  const model = useProntuarioDetailModel()
+  return <ProntuarioDetailView {...model} />
+}
+
 export default function ProntuarioDetailPage() {
-  // `useParams` em vez da prop `params`: no Next 15 ela é uma Promise em Server
-  // Components, e esta página é client — o hook resolve sem cerimônia.
-  const params = useParams<{ id: string }>()
-  const { record, loading, error } = useMedicalRecord(params?.id ?? "")
-  return <ProntuarioDetailView record={record} loading={loading} error={error} />
+  // `useSearchParams` (o `?editar=1` de quem acabou de criar) exige fronteira de
+  // Suspense no App Router; sem ela o build falha ao pré-renderizar a rota.
+  return (
+    <Suspense fallback={null}>
+      <Detalhe />
+    </Suspense>
+  )
 }

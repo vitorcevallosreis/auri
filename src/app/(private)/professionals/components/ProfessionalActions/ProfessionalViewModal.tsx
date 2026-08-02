@@ -9,6 +9,7 @@ import {
   Divider,
 } from "@nextui-org/react";
 import { Professional } from "@/contexts/Professionals/interfaces";
+import { faltamDadosMemed } from "../DadosPrescricao";
 
 // Interface para representar as categorias de idade
 interface AgeCategories {
@@ -78,6 +79,27 @@ export default function ProfessionalViewModal({
                   <p>{professional.email}</p>
                   <p>{professional.telefone}</p>
                 </div>
+              </div>
+
+              <Divider />
+
+              {/* Prescrição digital. Fica aqui, e não escondido no formulário,
+                  porque a pergunta que o dono faz é "quem já consegue
+                  prescrever?" — e a resposta é o que está faltando. */}
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  Prescrição digital (Memed)
+                </h3>
+                {faltamDadosMemed(professional).length === 0 ? (
+                  <p className="text-sm">
+                    Cadastro completo — {professional.conselho_sigla}{" "}
+                    {professional.conselho_numero}/{professional.conselho_uf}
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    Falta preencher: {faltamDadosMemed(professional).join(", ")}.
+                  </p>
+                )}
               </div>
 
               <Divider />

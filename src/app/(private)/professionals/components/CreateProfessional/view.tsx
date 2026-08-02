@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Service } from "@/contexts/Services/interfaces"
 import { formatToBRL } from "@/app/(private)/utils/Currency"
 import { Professional } from "@/contexts/Professionals/interfaces"
+import DadosPrescricao from "../DadosPrescricao"
 
 // Componente para selecionar um profissional existente ou criar um novo
 const SelectProfessionalStep = ({ 
@@ -238,7 +239,7 @@ export default function CreateProfessionalView({
             />
           )}
           {current_step === EnumFormStep.INFO && (
-            <div className="grid grid-rows-3 gap-3">
+            <div className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="Nome do Profissional*"
@@ -282,6 +283,21 @@ export default function CreateProfessionalView({
                   {...register("telefone", { required: true })}
                   errorMessage={errors?.telefone?.message}
                   isInvalid={!!errors?.telefone?.message}
+                />
+              </div>
+
+              <div className="pt-2 border-t">
+                <DadosPrescricao
+                  valores={{
+                    cpf: watch("cpf"),
+                    data_nascimento: watch("data_nascimento"),
+                    conselho_sigla: watch("conselho_sigla"),
+                    conselho_numero: watch("conselho_numero"),
+                    conselho_uf: watch("conselho_uf"),
+                  }}
+                  onChange={(campo, valor) =>
+                    setValue(campo, valor, { shouldValidate: true })
+                  }
                 />
               </div>
             </div>

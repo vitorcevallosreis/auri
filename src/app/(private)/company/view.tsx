@@ -7,7 +7,7 @@ import { Button } from "@nextui-org/react"
 import CompanyAddress from "./company_address"
 import { DashboardLayout } from "@/app/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { UserRound, Tag, Boxes, Handshake, Building2, CreditCard, Scroll, FileCheck, Award, Info } from "lucide-react"
+import { UserRound, Tag, Boxes, Handshake, Building2, CreditCard, Scroll, FileCheck, Award, Info, LayoutTemplate } from "lucide-react"
 import CompanyAgreements from "./company_agreements"
 import CompanyPaymentMethods from "./company_payment_methods"
 import CompanyPolicies from "./company_policies"
@@ -38,6 +38,12 @@ const companyLinks = [
     description: "Configure os serviços oferecidos pela sua empresa",
     icon: <Handshake className="h-8 w-8 text-primary" />,
     href: "/services",
+  },
+  {
+    title: "Modelos de prontuário",
+    description: "Defina os campos que o profissional preenche no atendimento",
+    icon: <LayoutTemplate className="h-8 w-8 text-primary" />,
+    href: "/record-templates",
   },
 ]
 

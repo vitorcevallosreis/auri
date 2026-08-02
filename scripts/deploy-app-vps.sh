@@ -80,7 +80,8 @@ RUNTIME_KEYS=(
   WORKER_POLL_INTERVAL_MS
   WORKER_CLAIM_BATCH
   WORKER_REAP_TIMEOUT_SECONDS
-  # --- Agente (P3.3). Só o worker usa; o app nunca fala com a Anthropic. ---
+  # --- Agente (P3.3). O worker usa; desde a escuta do prontuário, o APP
+  #     também fala com a Anthropic (rota /api/prontuario/escuta). ---
   ANTHROPIC_API_KEY
   AGENT_MODEL
   AGENT_EFFORT
@@ -88,6 +89,20 @@ RUNTIME_KEYS=(
   AGENT_HISTORY_LIMIT
   AGENT_CACHE_TTL
   AGENT_SEND_ENABLED
+  # --- Prontuário: escuta por IA e prescrição digital ---
+  # Nenhuma delas existe hoje em `app-deploy.env`, e o script pula as vazias —
+  # as duas features sobem DESLIGADAS, mostrando na tela que não estão
+  # configuradas. Estão listadas aqui para que ligá-las depois seja preencher o
+  # env file, e não descobrir que o valor nunca chegava ao container.
+  TRANSCRICAO_PROVIDER
+  TRANSCRICAO_API_KEY
+  TRANSCRICAO_MODELO
+  ESCUTA_MODEL
+  # A SECRET da Memed é server-only e não pode virar NEXT_PUBLIC_ nunca.
+  MEMED_API_KEY
+  MEMED_SECRET_KEY
+  MEMED_API_URL
+  MEMED_SCRIPT_URL
 )
 
 # Envs inlinadas no BUILD (--build-arg). Devem casar com os ARG do Dockerfile.
