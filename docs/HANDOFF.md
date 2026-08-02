@@ -3,6 +3,11 @@
 > **Leia este arquivo primeiro.** Ele existe para você continuar sem re-derivar contexto.
 > Atualizado: **2026-07-30**. Branch de trabalho: `feat/plan2-evolution-ingress`, último
 > commit `a27d955`.
+>
+> **Este arquivo cobre o go-live do WhatsApp (ingress + agente).** A frente do
+> **prontuário clínico** — modelos, assinatura, escuta por IA e prescrição Memed — corre em
+> paralelo e tem handoff próprio: [`HANDOFF-prontuario.md`](./HANDOFF-prontuario.md)
+> (migrations 0022–0026, sessão de 2026-08-02, ainda não commitada).
 
 ---
 
