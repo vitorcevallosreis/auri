@@ -25,6 +25,20 @@ import pg from "pg";
 const COMPANY_ID = process.argv[2] || "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const PASSWORD = "senha123";
 
+// Quantos profissionais ganham LOGIN (os demais seguem só no catálogo).
+//
+// Existe porque a empresa "auri" é a conta do Vitor, não uma vitrine: lá basta
+// um médico para testar o papel. A Clínica A, que é a conta de demonstração,
+// usa os três. Sem este parâmetro, rodar o seed de novo na auri recriaria as
+// contas que foram removidas de propósito.
+//
+//   node scripts/seed-professional-access.mjs <company_id> [--logins=N]
+const LOGIN_COUNT = (() => {
+  const arg = process.argv.find((a) => a.startsWith("--logins="));
+  const n = arg ? Number(arg.split("=")[1]) : 3;
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, 3) : 3;
+})();
+
 // Duas fontes de credencial, cada uma no arquivo onde já vive:
 //   .env.supabase-dev -> SUPABASE_DB_URL          (padrão de seed-dashboard-demo.mjs)
 //   .env.local        -> URL + SERVICE_ROLE_KEY   (padrão de seed-auth.mjs)
@@ -63,14 +77,16 @@ const PREFIX_RECORD = "da000000";
 const demoId = (p, n) => `${p}-${COMPANY_TAG}-4000-8000-${String(n).padStart(12, "0")}`;
 const demoLike = (p) => `${p}-${COMPANY_TAG}-%`;
 
-// Os 3 primeiros do catálogo, que são os de maior volume no seed do painel.
-// Os outros 3 ficam SEM login de propósito: provam que o vínculo é opcional e
-// que um profissional pode existir só como registro de agenda.
-const LOGINS = [
+// Os primeiros do catálogo, que são os de maior volume no seed do painel.
+// Quem sobrar fica SEM login de propósito: prova que o vínculo é opcional e que
+// um profissional pode existir só como registro de agenda, com pacientes e
+// prontuários, sem nunca entrar no sistema.
+const CANDIDATOS = [
   { n: 1, slug: "helena",  nome: "Dra. Helena Marques", area: "clinica_geral" },
   { n: 2, slug: "rafael",  nome: "Dr. Rafael Okamoto",  area: "cardiologia" },
   { n: 3, slug: "beatriz", nome: "Dra. Beatriz Salles", area: "dermatologia" },
 ];
+const LOGINS = CANDIDATOS.slice(0, LOGIN_COUNT);
 
 // ---------------------------------------------------------------------------
 // Biblioteca de texto clínico. Verossímil o bastante para julgar densidade e
@@ -256,6 +272,15 @@ try {
     "delete from myia_medical_records where id::text like $1 and company_id = $2",
     [demoLike(PREFIX_RECORD), COMPANY_ID]);
 
+  // Prontuário e login são coisas INDEPENDENTES: a IA escreve o registro tenha
+  // o médico acesso ao sistema ou não. Por isso a geração percorre CANDIDATOS,
+  // não `vinculados` — reduzir o número de logins não pode apagar o prontuário
+  // de quem ficou sem conta.
+  const comProntuario = CANDIDATOS.map((p) => ({
+    ...p,
+    professionalId: demoId(PREFIX_PROFESSIONAL, p.n),
+  }));
+
   // `order by a.id` é obrigatório: sem ordem estável o PRNG casa um texto
   // diferente a cada execução e a idempotência morre.
   const { rows: atendimentos } = await client.query(
@@ -264,10 +289,10 @@ try {
      where a.company_id = $1 and a.status = 'completed'
        and a.professional_id = any($2)
      order by a.id`,
-    [COMPANY_ID, vinculados.map((v) => v.professionalId)]);
+    [COMPANY_ID, comProntuario.map((v) => v.professionalId)]);
 
   const areaPorProfissional = Object.fromEntries(
-    vinculados.map((v) => [v.professionalId, v.area]));
+    comProntuario.map((v) => [v.professionalId, v.area]));
 
   let n = 0;
   const contagem = { ai: 0, manual: 0, pending: 0, reviewed: 0, signed: 0 };
