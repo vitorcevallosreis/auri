@@ -7,6 +7,7 @@ import {
   AuthProviderProps,
   SignUnData,
   AuthToken,
+  AppRole,
 } from "./interfaces"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/config"
@@ -21,10 +22,11 @@ export const AuthContext = createContext({} as AuthContextType)
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [user, set_user] = useState({
+  const [user, set_user] = useState<AuthToken>({
     user_id: "",
     company_id: "",
     hashed_password: "",
+    role: "owner",
   })
 
   // Obter o estado do useAuthStore
@@ -38,12 +40,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     if (authData) {
       // Sincronizar os dados do AuthContext com o useAuthStore
-      authStore.setAuth(
-        authData.company_id,
-        authData.user_id,
-        authData.hashed_password
-      )
-      
+      authStore.setAuth(authData)
+
       // Atualizar o estado local
       set_user(authData)
     } else {
@@ -54,18 +52,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user_id: "",
         company_id: "",
         hashed_password: "",
+        role: "owner",
       })
     }
   }, [])
 
-  function getAuthToken() {
+  function getAuthToken(): AuthToken | null {
     const cookies = parseCookies()
     const authData = cookies.authData
 
     if (authData) {
       try {
-        const parsedToken: AuthToken = JSON.parse(authData)
-        return parsedToken
+        const parsedToken = JSON.parse(authData) as Partial<AuthToken>
+        // O cookie vive 7 dias. Quem já estava logado quando `role` foi
+        // introduzido tem um cookie SEM esse campo — sem o default abaixo ele
+        // voltaria `undefined`, a sidebar ficaria sem itens e o middleware
+        // rotearia para lugar nenhum. Owner é o padrão porque era o único papel
+        // que existia quando aquele cookie foi gravado.
+        return {
+          user_id: parsedToken.user_id ?? "",
+          company_id: parsedToken.company_id ?? "",
+          hashed_password: parsedToken.hashed_password ?? "",
+          role: parsedToken.role === "professional" ? "professional" : "owner",
+        }
       } catch (error) {
         // Erro ao analisar token de autenticação
         // Limpar o cookie inválido
@@ -101,10 +110,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw myiaUserError || new Error("Usuário sem empresa vinculada")
       }
 
-      const authData = {
+      // O `role` já vinha do select acima desde sempre e era descartado. Ele
+      // decide para qual área o usuário é levado — e SÓ isso. Normalizamos aqui
+      // em vez de confiar no texto do banco: o CHECK de 0018 já garante o
+      // domínio, mas um valor inesperado não deve virar uma rota inexistente.
+      const role: AppRole =
+        myiaUser.role === "professional" ? "professional" : "owner"
+
+      const authData: AuthToken = {
         company_id: myiaUser.company_id,
         user_id: sessionData.user.id,
         hashed_password: "",
+        role,
       }
 
       // Salvar nos cookies com configurações de segurança aprimoradas.
@@ -125,12 +142,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
       
       // Sincronizar com o useAuthStore
-      authStore.setAuth(
-        authData.company_id,
-        authData.user_id,
-        authData.hashed_password
-      )
-      
+      authStore.setAuth(authData)
+
       set_user(authData) // Atualizar o usuário no estado local também
       
       // Carregar dados da empresa diretamente após o login
@@ -171,10 +184,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         closeButton: true,
       })
 
-      // "/" é o painel real ("Piloto Automático" no menu), dentro do
-      // (private)/layout com sidebar. NÃO usar "/dashboard": aquela rota é uma
-      // página legada órfã, fora do DashboardLayout e com dados fictícios.
-      router.push("/")
+      // Cada papel vai para a sua casa. "/" é o painel do dono da clínica
+      // ("Piloto Automático" no menu); "/pro" é a área do médico, com sidebar
+      // própria de três itens. NÃO usar "/dashboard": aquela rota é uma página
+      // legada órfã, fora do DashboardLayout e com dados fictícios.
+      router.push(role === "professional" ? "/pro" : "/")
     } catch (error) {
       // Sem log o erro real fica invisível: credencial errada, linha ausente em
       // myia_users e falha de RLS viravam todos o mesmo toast genérico, sem
@@ -274,6 +288,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user_id: "",
         company_id: "",
         hashed_password: "",
+        role: "owner",
       })
       
       // Emitir evento personalizado para notificar sobre o logout

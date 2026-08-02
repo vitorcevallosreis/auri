@@ -39,6 +39,12 @@ const pathToLabel: Record<string, string> = {
   "security": "Segurança",
   "profile": "Perfil",
   "notifications": "Notificações",
+  // Sem entrada aqui o breadcrumb mostra o slug cru em inglês. "billing" já
+  // faltava desde antes; as três seguintes são da área do profissional.
+  "billing": "Gestão Financeira",
+  "pro": "Meu Dia",
+  "prontuario": "Prontuário",
+  "financeiro": "Meu Financeiro",
 }
 
 // Definindo relações hierárquicas - quais páginas são filhas de quais

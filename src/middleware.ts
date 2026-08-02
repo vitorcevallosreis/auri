@@ -9,11 +9,42 @@ const public_routes = [
 
 const REDIRECT_WHEN_NOT_AUTHENTICATED_ROUTE = "/login"
 
+/** Raiz da área do profissional. Tudo sob ela é do médico; nada fora dela é. */
+const PROFESSIONAL_ROOT = "/pro"
+
+/**
+ * Lê o papel do cookie `authData`.
+ *
+ * ESTE VALOR NÃO AUTORIZA NADA. O cookie não é assinado nem httpOnly
+ * (src/contexts/Auth/index.tsx grava com `setCookie` do nookies), então qualquer
+ * pessoa o edita no devtools. O que ele decide aqui é ROTEAMENTO: levar cada
+ * papel para a sua casa em vez de deixar o médico numa tela de gestão vazia.
+ *
+ * A autorização de verdade é o RLS, que consulta myia_users no banco. Um médico
+ * que forjar `role:"owner"` e abrir "/" recebe a página renderizada com TODOS os
+ * números zerados e todas as listas vazias — porque app_role() continua
+ * devolvendo 'professional'. É o comportamento desejado, e é o teste que prova
+ * que a fronteira está no lugar certo.
+ */
+function readRole(raw: string | undefined): "owner" | "professional" {
+  try {
+    return JSON.parse(raw ?? "{}").role === "professional" ? "professional" : "owner"
+  } catch {
+    // Cookie corrompido não pode derrubar o app: trata como owner e deixa o RLS
+    // decidir o que ele consegue ver.
+    return "owner"
+  }
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   const publicRoutes = public_routes.find((route) => route.path === path)
   const authToken = request.cookies.get("authData")
+  const role = readRole(authToken?.value)
+  const homeForRole = role === "professional" ? PROFESSIONAL_ROOT : "/"
+  const isProfessionalArea =
+    path === PROFESSIONAL_ROOT || path.startsWith(`${PROFESSIONAL_ROOT}/`)
 
   // NÃO reintroduzir um "bypass de desenvolvimento" aqui.
   //
@@ -54,15 +85,29 @@ export function middleware(request: NextRequest) {
   ) {
     const redirect_url = request.nextUrl.clone()
 
-    // "/" é o painel real (dentro do (private)/layout, com sidebar). A rota
-    // "/dashboard" é uma página legada órfã — mandar para lá deixava o usuário
-    // numa tela sem menu e com dados fictícios.
-    redirect_url.pathname = "/"
+    // "/" é o painel do dono (dentro do (private)/layout, com sidebar) e "/pro"
+    // é a área do médico. A rota "/dashboard" é uma página legada órfã — mandar
+    // para lá deixava o usuário numa tela sem menu e com dados fictícios.
+    redirect_url.pathname = homeForRole
 
     return NextResponse.redirect(redirect_url)
   }
 
   if (authToken && !publicRoutes) {
+    // Cada papel fica na sua área. Sem isto, o médico que digitasse "/" veria o
+    // painel de gestão inteiro renderizado e zerado — tecnicamente seguro, pelo
+    // RLS, mas incompreensível como produto.
+    if (role === "professional" && !isProfessionalArea) {
+      const redirect_url = request.nextUrl.clone()
+      redirect_url.pathname = PROFESSIONAL_ROOT
+      return NextResponse.redirect(redirect_url)
+    }
+    if (role !== "professional" && isProfessionalArea) {
+      const redirect_url = request.nextUrl.clone()
+      redirect_url.pathname = "/"
+      return NextResponse.redirect(redirect_url)
+    }
+
     return NextResponse.next()
   }
 

@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import type { AppRole } from "@/contexts/Auth/interfaces"
 
 interface AuthState {
   isAuthenticated: boolean
@@ -10,14 +11,17 @@ interface User {
   company_id: string
   user_id: string
   hashed_password: string
+  /** Papel de aplicação — decide qual área o usuário enxerga. Não autoriza
+   *  nada por si: o recorte real dos dados é o RLS. */
+  role: AppRole
 }
 
 interface AuthStore extends AuthState {
-  setAuth: (
-    company_id: string,
-    user_id: string,
-    hashed_password: string
-  ) => void
+  /** Recebe um objeto, não argumentos posicionais. A assinatura antiga era
+   *  `(company_id, user_id, hashed_password)` — três strings em sequência, em
+   *  que trocar duas de lugar compilava e falhava em silêncio. Ao acrescentar
+   *  um quarto campo o risco só aumentaria. */
+  setAuth: (user: User) => void
   clearAuth: () => void
 }
 
@@ -26,14 +30,10 @@ export const useAuthStore = create<AuthStore>()((set) => ({
   isAuthenticated: false,
   user: null,
   loading: false,
-  setAuth: (company_id: string, user_id: string, hashed_password: string) =>
+  setAuth: (user: User) =>
     set({
       isAuthenticated: true,
-      user: {
-        company_id,
-        user_id,
-        hashed_password,
-      },
+      user,
       loading: false,
     }),
   clearAuth: () =>

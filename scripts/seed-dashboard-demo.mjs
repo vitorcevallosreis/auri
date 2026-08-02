@@ -241,7 +241,12 @@ try {
 
   for (let d = new Date(firstMonth); d <= lastDay; d.setDate(d.getDate() + 1)) {
     const day = d.getDay();
-    if (day === 0) continue;                       // domingo fechado
+    const ehHoje = d.getTime() === TODAY.getTime();
+    // Domingo é dia fechado — exceto se for HOJE. A tela "Meu Dia" do médico
+    // mostra exclusivamente a agenda do dia corrente; sem esta exceção ela
+    // ficaria vazia todo domingo, e a conta de demonstração deixaria de
+    // demonstrar justamente a tela principal do profissional.
+    if (day === 0 && !ehHoje) continue;
     const perDay = day === 6 ? between(2, 5) : between(7, 14); // sábado reduzido
 
     // Crescimento leve mês a mês, para a linha do gráfico ter tendência.
@@ -265,9 +270,16 @@ try {
       const duration = Math.max(15, service.minutes + between(-10, 15));
       const [endH, endM] = addMinutes(hour, minute, duration);
 
-      const isFuture = d > TODAY;
+      // O status depende de o atendimento já ter ACONTECIDO — e no dia corrente
+      // isso é uma questão de HORA, não de data. Sem esta distinção, a tela
+      // "Meu Dia" do médico mostrava um paciente das 09h15 rotulado "Concluído"
+      // às 07h47, ao lado do card "Próximo" apontando para ele mesmo.
+      const agora = new Date();
+      const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+      const jaPassou = ehHoje ? endH * 60 + endM <= minutosAgora : d < TODAY;
+
       let status;
-      if (isFuture) {
+      if (!jaPassou) {
         status = rand() < 0.06 ? "cancelled" : "scheduled";
       } else {
         const r = rand();
