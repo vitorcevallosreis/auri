@@ -6,8 +6,9 @@
 // `set local ...` e claims de JWT persistem entre statements.
 // Convenção: um arquivo de teste "passa" se NENHUM statement retornar linhas.
 // Qualquer linha retornada é tratada como uma falha de asserção.
-// Requer a env SUPABASE_DB_URL. NÃO usar em arquivos com dollar-quotes ($$...$$)
-// — migrations são aplicadas via `npx supabase db push`, não por este runner.
+// Requer a env SUPABASE_DB_URL. Dollar-quotes ($$...$$, $tag$...$tag$) são
+// respeitados no split, então blocos `do $$ ... $$` funcionam — ainda assim,
+// migrations são aplicadas via `npx supabase db push`, não por este runner.
 
 import { readFileSync, existsSync } from "node:fs";
 import pg from "pg";
@@ -86,10 +87,58 @@ const sql = readFileSync(file, "utf8")
   .split("\n")
   .map((line) => line.replace(/--.*$/, ""))
   .join("\n");
-const statements = sql
-  .split(";")
-  .map((s) => s.trim())
-  .filter((s) => s.length > 0);
+
+/**
+ * Divide por ';' RESPEITANDO dollar-quotes ($$ ... $$ e $tag$ ... $tag$).
+ *
+ * O split ingênuo por ';' partia qualquer bloco `do $$ ... end $$` no primeiro
+ * ponto-e-vírgula do corpo, e cada pedaço chegava ao banco como SQL inválido.
+ * Era por isso que o cabeçalho deste arquivo mandava não usar o runner com
+ * dollar-quotes — o que, na prática, proibia testar qualquer coisa que
+ * dependesse de plpgsql, ou seja: todo caso em que a asserção é "isto deveria
+ * levantar exceção". 0022 é exatamente esse caso.
+ *
+ * Literais de aspas simples ficam de fora de propósito: nenhum .test.sql tem
+ * ';' dentro de string, e reconhecer aspas exigiria tratar o escape '' junto.
+ */
+function splitStatements(text) {
+  const out = [];
+  let buf = "";
+  let dollarTag = null; // tag do dollar-quote aberto, ou null
+
+  for (let i = 0; i < text.length; i++) {
+    if (dollarTag) {
+      if (text.startsWith(dollarTag, i)) {
+        buf += dollarTag;
+        i += dollarTag.length - 1;
+        dollarTag = null;
+        continue;
+      }
+      buf += text[i];
+      continue;
+    }
+
+    const abre = /^\$[A-Za-z_]*\$/.exec(text.slice(i));
+    if (abre) {
+      dollarTag = abre[0];
+      buf += dollarTag;
+      i += dollarTag.length - 1;
+      continue;
+    }
+
+    if (text[i] === ";") {
+      out.push(buf);
+      buf = "";
+      continue;
+    }
+    buf += text[i];
+  }
+  out.push(buf);
+
+  return out.map((s) => s.trim()).filter((s) => s.length > 0);
+}
+
+const statements = splitStatements(sql);
 
 let client;
 try {
