@@ -16,7 +16,7 @@ export default function CompanyAddressView({
     <>
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-teal-50 rounded-lg">
+          <div className="p-2 bg-teal-50 rounded-lg dark:bg-teal-500/10">
             <MapPin className="h-5 w-5 text-primary" />
           </div>
           <CardTitle className="text-xl font-semibold text-foreground">Endereço da Empresa</CardTitle>

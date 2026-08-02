@@ -13,7 +13,7 @@ interface ErrorAlertProps {
 export function ErrorAlert({ message, onRetry }: ErrorAlertProps) {
   return (
     <div 
-      className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-start gap-3"
+      className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-start gap-3 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300"
       role="alert"
       aria-live="assertive"
     >
@@ -24,7 +24,7 @@ export function ErrorAlert({ message, onRetry }: ErrorAlertProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="mt-2 border-red-200 hover:bg-red-100 hover:text-red-800" 
+            className="mt-2 border-red-200 hover:bg-red-100 hover:text-red-800 dark:border-red-500/30 dark:hover:bg-red-500/15 dark:hover:text-red-300" 
             onClick={onRetry}
           >
             <RefreshCw className="h-4 w-4 mr-1" aria-hidden="true" />

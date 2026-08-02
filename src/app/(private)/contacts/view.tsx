@@ -41,7 +41,7 @@ export default function ContactsView({
                 <h2 className="text-4xl font-bold mt-1">{contacts.length}</h2>
                 <p className="text-sm text-muted-foreground mt-1">Pacientes na base de dados</p>
               </div>
-              <div className="bg-teal-50 p-3 rounded-full">
+              <div className="bg-teal-50 p-3 rounded-full dark:bg-teal-500/10">
                 <Users className="h-6 w-6 text-primary" />
               </div>
             </div>
@@ -95,14 +95,14 @@ export default function ContactsView({
                       <td className="py-4 text-muted-foreground">{contact.number}</td>
                       <td className="py-4">
                         {contact.checked ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300">
                             <svg className="-ml-0.5 mr-1.5 h-2 w-2 text-green-400" fill="currentColor" viewBox="0 0 8 8">
                               <circle cx="4" cy="4" r="3" />
                             </svg>
                             Sim
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300">
                             <svg className="-ml-0.5 mr-1.5 h-2 w-2 text-red-400" fill="currentColor" viewBox="0 0 8 8">
                               <circle cx="4" cy="4" r="3" />
                             </svg>

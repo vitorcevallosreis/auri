@@ -65,7 +65,7 @@ export default function ChatHeaderView({
               onClick={() => chat.id && toggleChatPause(chat.id)}
               className={`flex items-center justify-center p-2 rounded-full transition-colors ${chat.chat_pause 
                 ? "bg-muted hover:bg-gray-300 text-foreground" 
-                : "bg-green-100 hover:bg-green-200 text-green-700"}`}
+                : "bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-500/15 dark:hover:bg-green-500/25 dark:text-green-300"}`}
               aria-label={chat.chat_pause ? "Reativar bot" : "Pausar bot"}
             >
               {chat.chat_pause ? (
@@ -78,7 +78,7 @@ export default function ChatHeaderView({
           </Tooltip>
           
           {/* Indicador de status do bot */}
-          <div className={`ml-2 flex items-center ${chat.chat_pause ? "text-muted-foreground" : "text-green-600"}`}>
+          <div className={`ml-2 flex items-center ${chat.chat_pause ? "text-muted-foreground" : "text-green-600 dark:text-green-400"}`}>
             <Bot className="w-4 h-4 mr-1" />
             <span className="text-xs font-medium">
               {chat.chat_pause ? "Pausado" : "Ativo"}

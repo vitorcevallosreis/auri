@@ -52,7 +52,10 @@ export default function SettingsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {settingsLinks.map((link) => (
             <Link href={link.href} key={link.href}>
-              <Card className="h-full transition-all hover:bg-teal-50 hover:text-primary">
+              {/* No escuro, `hover:bg-teal-50 hover:text-primary` clareava o card
+                  para quase branco e pintava o texto de menta — o cartão inteiro
+                  virava ilegível justamente ao passar o mouse. */}
+              <Card className="h-full transition-all hover:bg-accent/15">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-xl">{link.title}</CardTitle>
                   {link.icon}

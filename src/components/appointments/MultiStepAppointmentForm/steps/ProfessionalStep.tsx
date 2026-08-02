@@ -132,7 +132,7 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
-        <div className="bg-teal-50 p-4 border-b">
+        <div className="bg-teal-50 p-4 border-b dark:bg-teal-500/10">
           <h3 className="text-base font-medium text-primary flex items-center">
             <Stethoscope className="mr-2 h-5 w-5" />
             Selecione o médico ou profissional
@@ -192,13 +192,15 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
                     <div
                       key={professional.id}
                       className={`p-4 hover:bg-teal-50 cursor-pointer transition-colors ${
-                        selectedProfessionalId === professional.id ? 'bg-teal-100 border-l-4 border-primary' : ''
+                        selectedProfessionalId === professional.id ? 'bg-teal-100 border-l-4 border-primary dark:bg-teal-500/15' : ''
                       }`}
                       onClick={() => handleProfessionalSelect(professional.id)}
                     >
                       <div className="flex items-center">
                         <Avatar className="h-12 w-12 mr-4 border-2 border-border">
-                          <AvatarFallback className="bg-teal-100 text-primary font-medium">
+                          {/* teal-100 é fixo; no escuro as iniciais saíam em
+                              menta sobre fundo quase branco. */}
+                          <AvatarFallback className="bg-accent/20 text-foreground font-medium">
                             {getInitials(professional.nome)}
                           </AvatarFallback>
                         </Avatar>
@@ -217,7 +219,7 @@ export const ProfessionalStep: React.FC<ProfessionalStepProps> = ({
                           </div>
                         </div>
                         {selectedProfessionalId === professional.id && (
-                          <CheckCircle className="h-5 w-5 text-blue-600 ml-2" />
+                          <CheckCircle className="h-5 w-5 text-blue-600 ml-2 dark:text-blue-400" />
                         )}
                       </div>
                     </div>

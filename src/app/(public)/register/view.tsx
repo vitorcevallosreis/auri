@@ -32,7 +32,7 @@ export default function RegisterPageView({
             disabled={isLoading}
           />
           {errors?.name && (
-            <div className="text-red-600">{errors?.name?.message}</div>
+            <div className="text-red-600 dark:text-red-400">{errors?.name?.message}</div>
           )}
         </div>
 
@@ -45,7 +45,7 @@ export default function RegisterPageView({
             disabled={isLoading}
           />
           {errors?.company_name && (
-            <div className="text-red-600">{errors?.company_name?.message}</div>
+            <div className="text-red-600 dark:text-red-400">{errors?.company_name?.message}</div>
           )}
         </div>
         <div className="space-y-2">
@@ -65,7 +65,7 @@ export default function RegisterPageView({
             {...register("domain_server", { required: true })}
           />
           {errors?.domain_server && (
-            <div className="text-red-600">{errors?.domain_server?.message}</div>
+            <div className="text-red-600 dark:text-red-400">{errors?.domain_server?.message}</div>
           )}
         </div>
 
@@ -78,7 +78,7 @@ export default function RegisterPageView({
             disabled={isLoading}
           />
           {errors?.email && (
-            <div className="text-red-600">{errors?.email?.message}</div>
+            <div className="text-red-600 dark:text-red-400">{errors?.email?.message}</div>
           )}
         </div>
 
@@ -107,7 +107,7 @@ export default function RegisterPageView({
             </Button>
 
             {errors?.password && (
-              <div className="text-red-600">{errors?.password?.message}</div>
+              <div className="text-red-600 dark:text-red-400">{errors?.password?.message}</div>
             )}
           </div>
         </div>

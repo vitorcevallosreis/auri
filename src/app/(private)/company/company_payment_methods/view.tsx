@@ -24,7 +24,7 @@ export default function CompanyPaymentMethodsView({
     <Card className="bg-card border-0 shadow-sm h-fit">
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-teal-50 rounded-lg">
+          <div className="p-2 bg-teal-50 rounded-lg dark:bg-teal-500/10">
             <CreditCard className="h-5 w-5 text-primary" />
           </div>
           <CardTitle className="text-lg font-semibold text-foreground">Formas de Pagamento</CardTitle>
@@ -113,7 +113,7 @@ export default function CompanyPaymentMethodsView({
                       size="sm" 
                       variant="light" 
                       onClick={() => handleDelete(paymentMethod.id)}
-                      className="h-8 w-8 hover:bg-red-100 text-primary"
+                      className="h-8 w-8 text-primary hover:bg-destructive/10"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -144,7 +144,7 @@ export default function CompanyPaymentMethodsView({
                       size="sm" 
                       variant="light" 
                       onClick={() => handleDelete(paymentMethod.id)}
-                      className="h-8 w-8 hover:bg-red-100 text-primary"
+                      className="h-8 w-8 text-primary hover:bg-destructive/10"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

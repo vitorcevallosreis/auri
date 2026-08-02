@@ -48,9 +48,9 @@ const billingData = [
     },
     value: "R$ 200,00",
     paymentMethod: "Bradesco Saúde",
-    paymentMethodColor: "bg-red-100 text-red-700",
+    paymentMethodColor: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
     status: "Guia Gerada",
-    statusColor: "bg-blue-100 text-blue-700",
+    statusColor: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
     statusIcon: <CheckCircle className="h-4 w-4" />,
     billing: "Aguardando",
     billingIcon: <Clock className="h-4 w-4 text-amber-500" />
@@ -64,9 +64,9 @@ const billingData = [
     },
     value: "R$ 180,00",
     paymentMethod: "SulAmérica",
-    paymentMethodColor: "bg-orange-100 text-orange-700",
+    paymentMethodColor: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
     status: "Aguardando Lote",
-    statusColor: "bg-amber-100 text-amber-700",
+    statusColor: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
     statusIcon: <Clock className="h-4 w-4" />,
     billing: "Aguardando",
     billingIcon: <Clock className="h-4 w-4 text-amber-500" />
@@ -80,12 +80,12 @@ const billingData = [
     },
     value: "R$ 150,00",
     paymentMethod: "Link de Pagamento",
-    paymentMethodColor: "bg-purple-100 text-purple-700",
+    paymentMethodColor: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
     status: "Paga",
-    statusColor: "bg-green-100 text-green-700",
+    statusColor: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
     statusIcon: <CheckCircle className="h-4 w-4" />,
     billing: "Emitido",
-    billingIcon: <FileText className="h-4 w-4 text-green-600" />
+    billingIcon: <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
   },
   {
     id: 4,
@@ -98,7 +98,7 @@ const billingData = [
     paymentMethod: "Múltiplos",
     paymentMethodColor: "bg-muted text-foreground",
     status: "Pendente",
-    statusColor: "bg-yellow-100 text-yellow-700",
+    statusColor: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-300",
     statusIcon: <AlertCircle className="h-4 w-4" />,
     billing: "Após o pagamento",
     billingIcon: <Clock className="h-4 w-4 text-muted-foreground" />
@@ -112,12 +112,12 @@ const billingData = [
     },
     value: "R$ 180,00",
     paymentMethod: "Porto Saúde",
-    paymentMethodColor: "bg-blue-100 text-blue-700",
+    paymentMethodColor: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
     status: "Paga",
-    statusColor: "bg-green-100 text-green-700",
+    statusColor: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
     statusIcon: <CheckCircle className="h-4 w-4" />,
     billing: "Emitido",
-    billingIcon: <FileText className="h-4 w-4 text-green-600" />
+    billingIcon: <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
   },
   {
     id: 6,
@@ -128,9 +128,9 @@ const billingData = [
     },
     value: "R$ 200,00",
     paymentMethod: "Amil",
-    paymentMethodColor: "bg-cyan-100 text-cyan-700",
+    paymentMethodColor: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
     status: "Atrasada",
-    statusColor: "bg-red-100 text-red-700",
+    statusColor: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
     statusIcon: <X className="h-4 w-4" />,
     billing: "Aguardando",
     billingIcon: <Clock className="h-4 w-4 text-amber-500" />
@@ -316,8 +316,8 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground">Total em Aberto</p>
                   <p className="text-2xl font-bold text-foreground">R$ 1.180,00</p>
                 </div>
-                <div className="p-3 bg-red-100 rounded-full">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
+                <div className="p-3 bg-red-100 rounded-full dark:bg-red-500/15">
+                  <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
               </div>
             </CardContent>
@@ -328,10 +328,10 @@ export default function BillingPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Recebido Este Mês</p>
-                  <p className="text-2xl font-bold text-green-600">R$ 3.240,00</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">R$ 3.240,00</p>
                 </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                <div className="p-3 bg-green-100 rounded-full dark:bg-green-500/15">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
@@ -342,10 +342,10 @@ export default function BillingPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Aguardando</p>
-                  <p className="text-2xl font-bold text-amber-600">R$ 760,00</p>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">R$ 760,00</p>
                 </div>
-                <div className="p-3 bg-amber-100 rounded-full">
-                  <Clock className="h-6 w-6 text-amber-600" />
+                <div className="p-3 bg-amber-100 rounded-full dark:bg-amber-500/15">
+                  <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </CardContent>

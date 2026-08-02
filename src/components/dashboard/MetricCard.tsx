@@ -39,7 +39,7 @@ export function MetricCard({
             <span
               className={cn(
                 "text-xs font-medium",
-                trend.isPositive ? "text-primary" : "text-red-600"
+                trend.isPositive ? "text-primary" : "text-red-600 dark:text-red-400"
               )}
             >
               {trend.isPositive ? "+" : "-"}{trend.value}%

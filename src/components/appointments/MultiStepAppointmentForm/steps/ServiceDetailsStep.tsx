@@ -83,7 +83,7 @@ export const ServiceDetailsStep: React.FC<ServiceDetailsStepProps> = ({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-blue-700 mb-4">Detalhes do Serviço</h2>
+      <h2 className="text-xl font-semibold text-blue-700 mb-4 dark:text-blue-300">Detalhes do Serviço</h2>
       
       <div className="space-y-4">
         <div>
@@ -105,7 +105,7 @@ export const ServiceDetailsStep: React.FC<ServiceDetailsStepProps> = ({
         </div>
 
         <div className="grid gap-4 pt-4">
-          <Card className={cn("border-2", isInsurance ? "border-blue-200" : "border-border")}>
+          <Card className={cn("border-2", isInsurance ? "border-blue-200 dark:border-blue-500/30" : "border-border")}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <Label htmlFor="use-insurance" className="text-base font-medium">

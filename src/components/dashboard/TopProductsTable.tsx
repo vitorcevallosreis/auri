@@ -45,7 +45,9 @@ export function TopProductsTable({ services = [] }: TopServicesTableProps) {
                 </p>
               </div>
               <div className="text-right">
-                <Badge variant="outline" className="bg-teal-50 text-primary border-teal-200">
+                {/* Mesmo caso do painel: teal-50 é fixo e --primary vira menta
+                    no escuro, dando 1,55:1. Menta como fundo tingido. */}
+                <Badge variant="outline" className="bg-accent/15 text-foreground border-accent/40">
                   Pesquisado
                 </Badge>
               </div>

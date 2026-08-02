@@ -87,7 +87,30 @@ export default {
   },
   plugins: [
     require("tailwindcss-animate"),
-    nextui(),
+    // O vermelho padrão do NextUI (#F31260) não passa em contraste em nenhuma
+    // das duas formas em que ele aparece: como fundo sólido com texto branco dá
+    // 4,14:1, e como texto do botão "ghost" sobre o card escuro dá 3,72:1 — os
+    // dois abaixo dos 4,5:1 exigidos. Como isso vale justamente para os botões
+    // de excluir, vale ajustar na raiz em vez de caso a caso.
+    //
+    // Um tom por tema, medido: escurece no claro, clareia no escuro. Ambas as
+    // formas passam a dar 6,06:1 (claro) e 5,63:1 (escuro).
+    nextui({
+      themes: {
+        light: {
+          colors: {
+            danger: { DEFAULT: "#C20E4D", foreground: "#FFFFFF" },
+            // Cabeçalho de tabela do NextUI: `text-foreground-500` sobre
+            // `bg-default-100` dava 4,4:1 — a um décimo do mínimo. Um passo mais
+            // escuro no cinza resolve (5,49:1) sem mudar o tom.
+            foreground: { 500: "#62626B" },
+          },
+        },
+        dark: {
+          colors: { danger: { DEFAULT: "#FF6A8A", foreground: "#11282C" } },
+        },
+      },
+    }),
     require("tailwind-scrollbar-hide"),
   ],
 } satisfies Config

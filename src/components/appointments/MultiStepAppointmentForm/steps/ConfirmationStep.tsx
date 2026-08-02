@@ -66,8 +66,8 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-        <h3 className="text-lg font-medium text-blue-800 flex items-center mb-3">
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 dark:bg-blue-500/10">
+        <h3 className="text-lg font-medium text-blue-800 flex items-center mb-3 dark:text-blue-300">
           <CalendarClock className="mr-2 h-5 w-5" />
           Resumo do Agendamento
         </h3>
@@ -172,8 +172,8 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
           )}
           
           {/* Opções Adicionais */}
-          <div className="border-t border-blue-200 mt-4 pt-4">
-            <h4 className="text-base font-medium text-blue-700 mb-3">Opções Adicionais</h4>
+          <div className="border-t border-blue-200 mt-4 pt-4 dark:border-blue-500/30">
+            <h4 className="text-base font-medium text-blue-700 mb-3 dark:text-blue-300">Opções Adicionais</h4>
             
             {/* Notificação */}
             <div className="flex items-start mb-3">
@@ -182,7 +182,7 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
                 <div className="text-sm font-medium text-foreground">Notificação ao Cliente</div>
                 <div className="flex items-center mt-1">
                   {formData.additionalOptions?.sendNotification ? (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center">
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center dark:bg-green-500/15 dark:text-green-300 dark:hover:bg-green-500/15">
                       <Check className="h-3.5 w-3.5 mr-1" />
                       Notificação ativada
                     </Badge>
@@ -204,7 +204,7 @@ export const ConfirmationStep: React.FC<ConfirmationStepProps> = ({
                 <div className="flex items-center mt-1">
                   {formData.additionalOptions?.isRecurring ? (
                     <>
-                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center">
+                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 flex items-center dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/15">
                         <Check className="h-3.5 w-3.5 mr-1" />
                         Agendamento recorrente
                       </Badge>

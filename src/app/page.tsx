@@ -2,17 +2,15 @@
 
 import { DashboardLayout } from "@/app/layout/dashboard-layout"
 import { ThemeProvider } from "@/components/theme-provider"
-import { useEffect, useContext } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  Stethoscope, 
-  Clock, 
-  UserCheck, 
-  TrendingUp, 
+import {
+  Stethoscope,
+  Clock,
+  UserCheck,
+  TrendingUp,
   HeartHandshake,
   Activity,
   Star,
-  CalendarCheck 
+  CalendarCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth-store';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -20,58 +18,39 @@ import { InteractionsChart } from '@/components/dashboard/InteractionsChart';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NPSScore } from '@/components/dashboard/NPSScore';
-import { useDashboardStore } from './dashboard/viewModel/DashboardViewModel';
 import { useServiceSearches } from '@/hooks/useServiceSearches';
 import { useAppointmentMetrics } from '@/hooks/useAppointmentMetrics';
+import { useSatisfactionMetrics } from '@/hooks/useSatisfactionMetrics';
+import { useResponseMetrics } from '@/hooks/useResponseMetrics';
+
+const MONTH_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+/** "2026-08" -> "Ago". O rótulo acompanha o que o banco devolveu; fixá-lo no
+ *  código faria o gráfico mentir sobre qual mês é cada ponto. */
+function monthLabel(yyyyMM: string): string {
+  const month = Number(yyyyMM.split('-')[1]);
+  return MONTH_ABBR[month - 1] ?? yyyyMM;
+}
+
+const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { metrics, isLoading, error, fetchMetrics } = useDashboardStore();
-  const { user, isAuthenticated } = useAuthStore();
-  
-  // Usuário autenticado com company_id para filtrar os dados
+  const { user } = useAuthStore();
+  const companyId = user?.company_id;
 
-  useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
+  // Todo hook é chamado incondicionalmente, antes de qualquer return. As telas
+  // de carregando/erro abaixo saíam no meio da função e deixavam parte dos
+  // hooks para depois — a ordem mudava entre renders e o React quebrava assim
+  // que o primeiro estado de loading terminava.
+  const { searches, loading: loadingSearches, error: searchesError } = useServiceSearches(10, true, companyId);
+  const { metrics: appointments, loading: loadingAppointments, error: appointmentsError } = useAppointmentMetrics(companyId);
+  const { metrics: satisfaction, loading: loadingSatisfaction } = useSatisfactionMetrics(companyId);
+  const { metrics: response, loading: loadingResponse } = useResponseMetrics(companyId);
 
-  if (isLoading) {
-    return (
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem={false}
-        storageKey="dashboard-theme"
-      >
-        <DashboardLayout>
-          <div className="flex items-center justify-center h-full">Carregando...</div>
-        </DashboardLayout>
-      </ThemeProvider>
-    );
-  }
+  const dash = (loading: boolean, value: string) => (loading ? '—' : value);
 
-  if (error) {
-    return (
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem={false}
-        storageKey="dashboard-theme"
-      >
-        <DashboardLayout>
-          <div className="flex items-center justify-center h-full text-red-500">Erro: {error}</div>
-        </DashboardLayout>
-      </ThemeProvider>
-    );
-  }
-
-  const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'];
-  const hourLabels = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
-
-  const { searches, loading: loadingSearches, error: searchesError } = useServiceSearches(10, true, user?.company_id);
-  
-  // Passa o company_id para o hook useAppointmentMetrics para filtrar os atendimentos
-  const { metrics: appointmentMetrics, loading: loadingAppointments, error: appointmentsError } = useAppointmentMetrics(user?.company_id);
+  const volumeSeries = appointments.monthly;
+  const hourSeries = appointments.hourly;
 
   return (
     <ThemeProvider
@@ -85,52 +64,55 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">Painel de Controle</h1>
           </div>
-          
+
+          {appointmentsError && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              Não foi possível carregar as métricas: {appointmentsError}
+            </div>
+          )}
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
             <StatCard
               title="Consultas Realizadas"
-              value={loadingAppointments ? "Carregando..." : appointmentMetrics.total.toLocaleString('pt-BR')}
+              value={dash(loadingAppointments, appointments.finalized.toLocaleString('pt-BR'))}
               icon={<Stethoscope className="h-5 w-5 text-primary" />}
-              trend={appointmentMetrics.percentChange !== undefined ? { 
-                value: appointmentMetrics.percentChange, 
-                isPositive: appointmentMetrics.percentChange >= 0 
-              } : undefined}
+              trend={{
+                value: appointments.percentChange,
+                isPositive: appointments.percentChange >= 0,
+              }}
             />
-            
+
             <StatCard
               title="Tempo Médio de Consulta"
-              value={loadingAppointments ? "Carregando..." : `${appointmentMetrics.averageTime || 0} min`}
+              value={dash(loadingAppointments, `${appointments.averageTime} min`)}
               icon={<Activity className="h-5 w-5 text-primary" />}
-              trend={{ value: -5, isPositive: true }}
             />
-            
+
             <StatCard
               title="Taxa de Comparecimento"
-              value={loadingAppointments ? "Carregando..." : `${appointmentMetrics.resolutionRate || 0}%`}
+              value={dash(loadingAppointments, `${appointments.resolutionRate}%`)}
               icon={<HeartHandshake className="h-5 w-5 text-primary" />}
-              trend={{ value: 3, isPositive: true }}
             />
 
             <StatCard
               title="Satisfação do Paciente"
-              value="4.8"
+              value={dash(loadingSatisfaction, satisfaction.avgRating.toFixed(1))}
               icon={<Star className="h-5 w-5 text-primary" />}
-              trend={{ value: 2, isPositive: true }}
             />
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 mb-6">
             <InteractionsChart
-              data={[65, 70, 68, 74, 76, 78, 82]}
-              labels={monthLabels}
+              data={volumeSeries.map((p) => p.total)}
+              labels={volumeSeries.map((p) => monthLabel(p.month))}
               title="Volume de Consultas"
               type="line"
               fillArea={true}
             />
-            
+
             <InteractionsChart
-              data={[8.2, 7.5, 9.1, 8.5, 7.8, 8.2]}
-              labels={hourLabels}
+              data={hourSeries.map((p) => p.avgMinutes)}
+              labels={hourSeries.map((p) => hourLabel(p.hour))}
               title="Tempo Médio de Consulta (min)"
               type="bar"
             />
@@ -163,9 +145,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 <span>{search.count} {search.count > 1 ? 'pesquisas' : 'pesquisa'}</span>
                               </span>
                             ) : (
-                              new Date(search.created_at).toLocaleDateString('pt-BR', { 
-                                day: '2-digit', 
-                                month: '2-digit', 
+                              new Date(search.created_at).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
                                 year: 'numeric',
                                 hour: '2-digit',
                                 minute: '2-digit'
@@ -174,7 +156,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           </p>
                         </div>
                         <div className="text-right">
-                          <Badge variant="outline" className="bg-teal-50 text-primary border-teal-200">
+                          {/* `bg-teal-50 text-primary` sumia no tema escuro: o
+                              fundo teal-50 é fixo (quase branco) e --primary vira
+                              menta no escuro — 1,55:1. Menta é FUNDO tingido, com
+                              texto em foreground, como já faz a sidebar. */}
+                          <Badge variant="outline" className="bg-accent/15 text-foreground border-accent/40">
                             {index < 3 ? 'Mais procurado' : 'Procurado'}
                           </Badge>
                         </div>
@@ -184,41 +170,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </CardContent>
             </Card>
-            <NPSScore 
-              score={75}
-              promoters={650}
-              passives={250}
-              detractors={100}
+            <NPSScore
+              score={satisfaction.nps}
+              promoters={satisfaction.promoters}
+              passives={satisfaction.passives}
+              detractors={satisfaction.detractors}
             />
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Agendamentos Confirmados"
-              value="85%"
+              value={dash(loadingAppointments, `${appointments.confirmedRate}%`)}
               icon={<CalendarCheck className="h-5 w-5 text-primary" />}
-              trend={{ value: 4, isPositive: true }}
             />
-            
+
             <StatCard
               title="Tempo de Espera"
-              value="1.2 min"
+              value={dash(loadingResponse, `${response.avgWaitMinutes} min`)}
               icon={<Clock className="h-5 w-5 text-primary" />}
-              trend={{ value: -15, isPositive: true }}
             />
-            
+
             <StatCard
               title="Recepcionistas Ativas"
-              value="24"
+              value={dash(loadingResponse, String(response.activeAssistants))}
               icon={<UserCheck className="h-5 w-5 text-primary" />}
-              trend={{ value: 2, isPositive: true }}
             />
 
             <StatCard
               title="Taxa de Cancelamento"
-              value="3.2%"
+              value={dash(loadingAppointments, `${appointments.cancellationRate}%`)}
               icon={<TrendingUp className="h-5 w-5 text-primary" />}
-              trend={{ value: -8, isPositive: true }}
             />
           </div>
         </div>

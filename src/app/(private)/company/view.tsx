@@ -66,7 +66,7 @@ export default function CompanyPageView({
               <Card className="group h-full bg-card border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-1">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors">
+                    <div className="p-3 bg-teal-50 rounded-xl group-hover:bg-teal-100 transition-colors dark:bg-teal-500/10 dark:group-hover:bg-teal-500/15">
                       {React.cloneElement(link.icon, { className: "h-6 w-6 text-primary" })}
                     </div>
                     <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
@@ -97,7 +97,7 @@ export default function CompanyPageView({
           <Card className="bg-card border-0 shadow-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-teal-50 rounded-lg">
+                <div className="p-2 bg-teal-50 rounded-lg dark:bg-teal-500/10">
                   <Building2 className="h-5 w-5 text-primary" />
                 </div>
                 <CardTitle className="text-xl font-semibold text-foreground">Informações da Empresa</CardTitle>

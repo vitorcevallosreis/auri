@@ -133,10 +133,10 @@ export function AppointmentCard({
           <Badge 
             className={cn(
               "px-3 py-1 rounded-full text-xs font-medium",
-              appointment.status === 'scheduled' ? "bg-blue-50 text-blue-700" :
-              appointment.status === 'completed' ? "bg-green-50 text-green-700" :
-              appointment.status === 'cancelled' ? "bg-red-50 text-red-700" :
-              "bg-yellow-50 text-yellow-700"
+              appointment.status === 'scheduled' ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" :
+              appointment.status === 'completed' ? "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300" :
+              appointment.status === 'cancelled' ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300" :
+              "bg-yellow-50 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-300"
             )}
           >
             {appointment.status === 'scheduled' ? "Agendado" :

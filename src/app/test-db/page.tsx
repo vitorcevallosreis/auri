@@ -74,12 +74,12 @@ export default function TestDbPage() {
       {loading ? (
         <p>Carregando...</p>
       ) : error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-500/15 dark:border-red-500/40 dark:text-red-300">
           <p><strong>Erro:</strong> {error}</p>
         </div>
       ) : (
         <div>
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 dark:bg-green-500/15 dark:border-green-500/40 dark:text-green-300">
             <p>Conexão com o banco de dados estabelecida com sucesso!</p>
           </div>
 

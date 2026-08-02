@@ -20,19 +20,12 @@ import {
   ChevronRight,
   DoorClosed,
   Activity,
-  Building2,
-  TabletSmartphone,
-  Contact,
-  Stethoscope,
-  Boxes,
-  Tag,
-  Handshake,
-  CalendarHeart,
-  UserRound,
+  CalendarDays,
+  MessageSquare,
+  DollarSign,
+  Building,
+  BookUser,
   Settings,
-  Store,
-  UserCheck,
-  ClipboardList,
 } from "lucide-react"
 import { AuthContext } from "@/contexts/Auth"
 import { AuriIcon, AuriLogo } from "@/components/brand/auri-logo"
@@ -50,15 +43,23 @@ interface MenuItem {
   highlight?: boolean
 }
 
-// Menu principal da clínica no piloto automático
+// Menu principal da clínica no piloto automático.
+//
+// Ícones escolhidos pelo Vitor a partir de uma grade comparativa renderizada no
+// tamanho real. Mudanças em relação ao conjunto original:
+//   · Agenda     CalendarHeart -> CalendarDays  (o coração era ornamento)
+//   · WhatsApp   Stethoscope   -> MessageSquare (o estetoscópio estava na linha errada)
+//   · Financeiro ClipboardList -> DollarSign    (prancheta é registro, não dinheiro)
+//   · Clínica    Building2     -> Building      (mesma ideia, desenho mais limpo)
+//   · Pacientes  UserCheck     -> BookUser      ("check" sugeria aprovação; aqui é cadastro)
 const mainMenuItems: MenuItem[] = [
   { title: "Piloto Automático", icon: <Activity />, route: "/" },
-  { title: "Agenda Inteligente", icon: <CalendarHeart />, route: "/appointments" },
-  { title: "WhatsApp IA", icon: <Stethoscope />, route: "/chats" },
+  { title: "Agenda Inteligente", icon: <CalendarDays />, route: "/appointments" },
+  { title: "WhatsApp IA", icon: <MessageSquare />, route: "/chats" },
   { title: "Agentes IA", icon: <Bot />, route: "/assistants", highlight: true },
-  { title: "Gestão Financeira", icon: <ClipboardList />, route: "/billing" },
-  { title: "Gestão Clínica", icon: <Building2 />, route: "/company" },
-  { title: "Base de Pacientes", icon: <UserCheck />, route: "/contacts" },
+  { title: "Gestão Financeira", icon: <DollarSign />, route: "/billing" },
+  { title: "Gestão Clínica", icon: <Building />, route: "/company" },
+  { title: "Base de Pacientes", icon: <BookUser />, route: "/contacts" },
 ]
 
 // Menu de configurações e sistema
@@ -90,7 +91,15 @@ const SidebarButton = ({
       <Button
         variant="ghost"
         className={cn(
-          "relative w-full justify-start gap-4 px-2 py-4",
+          // Escala da navegação, medida e reduzida deliberadamente:
+          //   texto 14 -> 13px · ícone 24 -> 18px · traço 2 -> 1,75 · gap 16 -> 12px
+          //   altura 40 -> 36px, mantendo os 8px entre itens.
+          // O peso vinha sobretudo do ícone: ele nunca recebeu classe de tamanho
+          // e ficava nos 24px padrão do lucide, grande demais ao lado de 13-14px.
+          // O `py-4` que existia aqui era inerte — a altura fixa do Button vencia,
+          // e a caixa de conteúdo resultante (8px) era menor que o próprio ícone.
+          "relative h-9 w-full justify-start gap-3 px-2 text-[13px]",
+          "[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:stroke-[1.75]",
           isCollapsed && "justify-center px-2",
           // Item em destaque (menta bem diluído, para não competir com o ativo)
           highlight && !isActive && "bg-accent/15 hover:bg-accent/25",
@@ -110,7 +119,7 @@ const SidebarButton = ({
         )}
         onClick={onClick}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {icon}
           {!isCollapsed && <span>{title}</span>}
         </div>
@@ -191,10 +200,14 @@ export function Sidebar({
         </Button>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-3rem)] px-2 py-4">
+      {/* O grupo de sistema fica FORA do ScrollArea, ancorado no rodapé. Dentro
+          dele não funcionaria: o Radix envolve o conteúdo num wrapper com
+          `display: table`, que interrompe a cadeia de altura e faz qualquer
+          `h-full`/`justify-between` interno colapsar para a altura do conteúdo. */}
+      <div className="flex h-[calc(100vh-3rem)] flex-col">
         <TooltipProvider delayDuration={0}>
-          <div className="flex flex-col h-full justify-between">
-<nav className="flex flex-col gap-1">
+          <ScrollArea className="flex-1 px-2 py-4">
+            <nav className="flex flex-col gap-2">
               {mainMenuItems.map((item: MenuItem) => (
                 <SidebarButton
                   key={item.route}
@@ -208,49 +221,49 @@ export function Sidebar({
                 />
               ))}
             </nav>
+          </ScrollArea>
 
-            {/* Menu sistema - parte inferior */}
-            <div>
-              {/* Divider */}
-              {!isCollapsed && <div className="border-t border-border my-2" />}
-              <div className="flex flex-col gap-0.5 mt-1">
-                {/* Configurações */}
-                {systemMenuItems.map((item: MenuItem) => (
-                  <SidebarButton
-                    key={item.route}
-                    title={item.title}
-                    icon={item.icon}
-                    route={item.route}
-                    isCollapsed={isCollapsed}
-                    isActive={isRouteActive(item.route)}
-                    onClick={() => handleNavigation(item.route)}
-                  />
-                ))}
-
-                {/* Tema */}
+          {/* Menu sistema - parte inferior */}
+          <div className="shrink-0 px-2 pb-4">
+            {/* Divider */}
+            {!isCollapsed && <div className="border-t border-border mb-2" />}
+            <div className="flex flex-col gap-0.5">
+              {/* Configurações */}
+              {systemMenuItems.map((item: MenuItem) => (
                 <SidebarButton
-                  title="Tema"
-                  icon={<ThemeToggleIcon />}
-                  route="#"
+                  key={item.route}
+                  title={item.title}
+                  icon={item.icon}
+                  route={item.route}
                   isCollapsed={isCollapsed}
-                  isActive={false}
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  isActive={isRouteActive(item.route)}
+                  onClick={() => handleNavigation(item.route)}
                 />
+              ))}
 
-                {/* Sair */}
-                <SidebarButton
-                  title="Sair"
-                  icon={<DoorClosed className="h-4 w-4 text-muted-foreground" />}
-                  route="#"
-                  isCollapsed={isCollapsed}
-                  isActive={false}
-                  onClick={singOut}
-                />
-              </div>
+              {/* Tema */}
+              <SidebarButton
+                title="Tema"
+                icon={<ThemeToggleIcon />}
+                route="#"
+                isCollapsed={isCollapsed}
+                isActive={false}
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              />
+
+              {/* Sair */}
+              <SidebarButton
+                title="Sair"
+                icon={<DoorClosed className="h-4 w-4 text-muted-foreground" />}
+                route="#"
+                isCollapsed={isCollapsed}
+                isActive={false}
+                onClick={singOut}
+              />
             </div>
           </div>
         </TooltipProvider>
-      </ScrollArea>
+      </div>
     </aside>
   )
 }

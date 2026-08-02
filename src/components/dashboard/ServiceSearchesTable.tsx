@@ -38,7 +38,7 @@ export function ServiceSearchesTable({ searches = [] }: ServiceSearchesTableProp
                   </p>
                 </div>
                 <div className="text-right">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30">
                     Pesquisado
                   </Badge>
                 </div>

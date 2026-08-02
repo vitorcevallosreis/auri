@@ -63,21 +63,21 @@ const metrics = [
     value: "89%",
     subtitle: "↑ 45% vs mês anterior",
     icon: <Zap className="h-5 w-5" />,
-    color: "text-green-600"
+    color: "text-green-600 dark:text-green-400"
   },
   {
     title: "Tempo médio de resposta",
     value: "12s",
     subtitle: "↓ 85% vs atendimento manual",
     icon: <Clock className="h-5 w-5" />,
-    color: "text-blue-600"
+    color: "text-blue-600 dark:text-blue-400"
   },
   {
     title: "Satisfação do paciente",
     value: "9.4/10",
     subtitle: "↑ 92% recomendam",
     icon: <Heart className="h-5 w-5" />,
-    color: "text-red-600"
+    color: "text-red-600 dark:text-red-400"
   }
 ]
 
@@ -170,7 +170,7 @@ export default function HomePage() {
                         <Badge variant="outline" className="text-xs">Em breve</Badge>
                       )}
                       {step.status === "active" && (
-                        <div className="flex items-center justify-center gap-1 text-green-600">
+                        <div className="flex items-center justify-center gap-1 text-green-600 dark:text-green-400">
                           <CheckCircle className="h-4 w-4" />
                           <span className="text-xs font-medium">Ativo</span>
                         </div>

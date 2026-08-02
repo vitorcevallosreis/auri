@@ -124,7 +124,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
       <div className="bg-card rounded-lg border p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Bell className="h-5 w-5 text-blue-600 mr-2" />
+            <Bell className="h-5 w-5 text-blue-600 mr-2 dark:text-blue-400" />
             <h3 className="text-lg font-medium text-foreground">Notificação ao Cliente</h3>
           </div>
           <Switch 
@@ -144,7 +144,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
       <div className="bg-card rounded-lg border p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Repeat className="h-5 w-5 text-blue-600 mr-2" />
+            <Repeat className="h-5 w-5 text-blue-600 mr-2 dark:text-blue-400" />
             <h3 className="text-lg font-medium text-foreground">Agendamento Recorrente</h3>
           </div>
           <Switch 
@@ -224,7 +224,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
             
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="info">
-                <AccordionTrigger className="text-sm text-blue-600">
+                <AccordionTrigger className="text-sm text-blue-600 dark:text-blue-400">
                   <div className="flex items-center">
                     <Info className="h-4 w-4 mr-2" />
                     Informações sobre agendamentos recorrentes

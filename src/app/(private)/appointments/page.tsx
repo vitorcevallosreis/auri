@@ -62,11 +62,11 @@ import {
 
 // Cores para os status de consultas médicas
 const statusColors = {
-  scheduled: { bg: 'bg-teal-50', text: 'text-primary', border: 'border-teal-200', badgeBg: 'bg-teal-100' },
-  completed: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', badgeBg: 'bg-green-100' },
-  cancelled: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', badgeBg: 'bg-red-100' },
-  no_show: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', badgeBg: 'bg-yellow-100' },
-  rescheduled: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', badgeBg: 'bg-purple-100' }
+  scheduled: { bg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-primary', border: 'border-teal-200 dark:border-teal-500/30', badgeBg: 'bg-teal-100 dark:bg-teal-500/15' },
+  completed: { bg: 'bg-green-50 dark:bg-green-500/10', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-500/30', badgeBg: 'bg-green-100 dark:bg-green-500/15' },
+  cancelled: { bg: 'bg-red-50 dark:bg-red-500/10', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-500/30', badgeBg: 'bg-red-100 dark:bg-red-500/15' },
+  no_show: { bg: 'bg-yellow-50 dark:bg-yellow-500/10', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-500/30', badgeBg: 'bg-yellow-100 dark:bg-yellow-500/15' },
+  rescheduled: { bg: 'bg-purple-50 dark:bg-purple-500/10', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-500/30', badgeBg: 'bg-purple-100 dark:bg-purple-500/15' }
 };
 
 // Mapeamento de labels para status das consultas
@@ -503,13 +503,13 @@ const AppointmentsPageContent = () => {
           </div>
         ) : error ? (
           <div className="h-full w-full flex items-center justify-center p-12">
-            <div className="text-center max-w-md mx-auto p-6 rounded-lg bg-red-50 border border-red-100">
+            <div className="text-center max-w-md mx-auto p-6 rounded-lg bg-red-50 border border-red-100 dark:bg-red-500/10">
               <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-red-700 mb-2">Erro ao carregar agendamentos</h3>
-              <p className="text-red-600 mb-4">Ocorreu um problema ao buscar os dados. Por favor, tente novamente.</p>
+              <h3 className="text-lg font-semibold text-red-700 mb-2 dark:text-red-300">Erro ao carregar agendamentos</h3>
+              <p className="text-red-600 mb-4 dark:text-red-400">Ocorreu um problema ao buscar os dados. Por favor, tente novamente.</p>
               <Button 
                 variant="outline" 
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" 
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-300" 
                 onClick={handleRefresh}
               >
                 <RefreshCw className="h-4 w-4 mr-2" /> Tentar novamente

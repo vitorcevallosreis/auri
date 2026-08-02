@@ -178,7 +178,7 @@ export const ServiceStep: React.FC<ServiceStepProps> = ({
                 <div
                   key={service.id}
                   className={`p-3 hover:bg-muted cursor-pointer ${
-                    selectedServiceId === service.id ? 'bg-teal-50 border-l-4 border-primary' : ''
+                    selectedServiceId === service.id ? 'bg-teal-50 border-l-4 border-primary dark:bg-teal-500/10' : ''
                   }`}
                   onClick={() => handleServiceSelect(service.id)}
                 >
