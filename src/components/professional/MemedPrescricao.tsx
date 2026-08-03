@@ -39,7 +39,13 @@ declare global {
 }
 
 export interface PacienteMemed {
-  idExterno: string
+  /**
+   * Id do PACIENTE no nosso banco (`myia_contacts.id`), que é como a Memed
+   * reconhece a mesma pessoa entre consultas. Opcional porque o prontuário
+   * pode não ter contato vinculado — e nesse caso a ausência é a resposta
+   * certa: um id errado aqui cria pacientes duplicados lá.
+   */
+  idExterno?: string
   nome: string
   telefone?: string | null
   email?: string | null
@@ -176,10 +182,14 @@ export function MemedPrescricao({
     if (!moduloPronto.current || !window.MdHub) return
     setEstado({ fase: "abrindo" })
     try {
-      await window.MdHub.command.send("plataforma.prescricao", "setPaciente", {
-        ...paciente,
-        sexo,
-      })
+      // Chaves sem valor saem do objeto em vez de irem como `undefined`: o
+      // módulo deles não é nosso, e um campo presente-porém-vazio é o tipo de
+      // coisa que uma validação do outro lado trata diferente de ausente.
+      const dados: Record<string, unknown> = { sexo }
+      for (const [k, v] of Object.entries(paciente)) {
+        if (v !== undefined && v !== null && v !== "") dados[k] = v
+      }
+      await window.MdHub.command.send("plataforma.prescricao", "setPaciente", dados)
       await window.MdHub.module.show("plataforma.prescricao")
     } catch (err) {
       console.error("[memed] abrir:", err)

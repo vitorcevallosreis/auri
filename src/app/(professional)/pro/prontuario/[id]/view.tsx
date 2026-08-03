@@ -571,8 +571,18 @@ export function ProntuarioDetailView(m: Props) {
                 {/* Prescrever continua disponível DEPOIS de assinado: a receita
                     é um ato à parte, e é normal o médico assinar o registro e
                     emitir a receita em seguida. */}
+                {/* `idExterno` é o id do PACIENTE, não deste prontuário: é por
+                    ele que a Memed reconhece que duas consultas são da mesma
+                    pessoa. Mandar `record.id` faria cada consulta criar um
+                    paciente novo lá. Quando não há contato vinculado vai
+                    indefinido — sem id é melhor que com o id errado, que
+                    corrompe o cadastro do outro lado em silêncio. */}
                 <MemedPrescricao
-                  paciente={{ idExterno: record.id, nome: record.patient }}
+                  paciente={{
+                    idExterno: record.contactId ?? undefined,
+                    nome: record.patient,
+                    telefone: record.contactPhone,
+                  }}
                   recordId={record.id}
                   onEmitida={m.recarregarReceitas}
                 />

@@ -54,6 +54,20 @@ export interface MedicalRecordDetail extends MedicalRecordSummary {
   signedAt: string | null;
   startTime: string | null;
   endTime: string | null;
+  /**
+   * O PACIENTE, não o prontuário.
+   *
+   * Existe para a prescrição: a Memed identifica o paciente por um id externo
+   * nosso, e mandar o id do prontuário criaria um paciente novo a cada
+   * consulta — o histórico dele lá se fragmentaria e não se recomporia mais.
+   *
+   * Nulo é possível (`contact_id` é opcional em 0020) e tem que ser tratado
+   * como nulo: cair de volta no id do prontuário seria pior que não mandar id.
+   */
+  contactId: string | null;
+  /** Único dado de contato que temos do paciente — `myia_contacts` não guarda
+   *  CPF, nascimento nem e-mail. */
+  contactPhone: string | null;
 }
 
 /** Normaliza a linha crua de myia_record_templates. */
@@ -213,7 +227,7 @@ export function useMedicalRecord(id: string) {
         const { data, error: qErr } = await supabase
           .from('myia_medical_records')
           .select(
-            `id, record_date, source, review_status, content, ai_model, ai_generated_at, reviewed_at, signed_at, ${TEMPLATE_SELECT}, ${FK_APPOINTMENT}(cliente_nome, start_time, end_time, myia_services(name))`
+            `id, record_date, source, review_status, content, ai_model, ai_generated_at, reviewed_at, signed_at, contact_id, myia_contacts(number), ${TEMPLATE_SELECT}, ${FK_APPOINTMENT}(cliente_nome, start_time, end_time, myia_services(name))`
           )
           .eq('id', id)
           .maybeSingle();
@@ -230,6 +244,12 @@ export function useMedicalRecord(id: string) {
           ? data.myia_appointments[0]
           : data.myia_appointments;
 
+        // Mesmo desempacotamento do embed de appointment/template: o PostgREST
+        // devolve objeto ou array conforme a cardinalidade que ele infere.
+        const contato: any = Array.isArray((data as any).myia_contacts)
+          ? (data as any).myia_contacts[0]
+          : (data as any).myia_contacts;
+
         setRecord({
           ...toSummary(data),
           content: (data.content ?? {}) as Record<string, string | null>,
@@ -240,6 +260,8 @@ export function useMedicalRecord(id: string) {
           signedAt: data.signed_at,
           startTime: appt?.start_time ?? null,
           endTime: appt?.end_time ?? null,
+          contactId: (data as any).contact_id ?? null,
+          contactPhone: contato?.number ?? null,
         });
       } catch (err: any) {
         if (cancelled) return;
