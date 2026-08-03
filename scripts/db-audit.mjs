@@ -87,8 +87,44 @@ const sql = readFileSync(file, "utf8")
   // `\set` é meta-comando do psql; as consultas já trazem a data literal.
   .split("\n").filter((l) => !l.trimStart().startsWith("\\")).join("\n");
 
-const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
-await client.connect();
+// O host direto (db.<ref>.supabase.co) é IPv6-only; em rede sem IPv6 ele falha
+// com EHOSTUNREACH. Mesmo fallback de db-test.mjs, pelo mesmo motivo — o
+// pooler publica IPv4 e serve o mesmo banco, mudando só o formato do usuário.
+function poolerFallback(direct) {
+  try {
+    const u = new URL(direct);
+    const parts = u.hostname.split(".");
+    if (parts[0] !== "db" || !parts[1]) return null;
+    const ref = parts[1];
+    const region = process.env.SUPABASE_DB_REGION ?? "sa-east-1";
+    const host = process.env.SUPABASE_DB_POOLER_HOST ?? `aws-1-${region}.pooler.supabase.com`;
+    return `postgresql://postgres.${ref}:${u.password}@${host}:5432${u.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+async function conectar() {
+  let ultimo;
+  for (const [i, candidato] of [url, poolerFallback(url)].filter(Boolean).entries()) {
+    const c = new pg.Client({
+      connectionString: candidato,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+    });
+    try {
+      await c.connect();
+      if (i > 0) console.error("(host direto indisponível — usando o pooler)");
+      return c;
+    } catch (err) {
+      ultimo = err;
+      try { await c.end(); } catch {}
+    }
+  }
+  throw ultimo;
+}
+
+const client = await conectar();
 await client.query("begin read only");
 
 let n = 0;
