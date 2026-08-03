@@ -19,42 +19,116 @@ import { useQueryClient } from '@tanstack/react-query'
 
 export const AuthContext = createContext({} as AuthContextType)
 
+/** Estado deslogado. Estava repetido em três pontos que precisam concordar. */
+const USUARIO_VAZIO: AuthToken = {
+  user_id: "",
+  company_id: "",
+  hashed_password: "",
+  role: "owner",
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [user, set_user] = useState<AuthToken>({
-    user_id: "",
-    company_id: "",
-    hashed_password: "",
-    role: "owner",
-  })
+  const [user, set_user] = useState<AuthToken>(USUARIO_VAZIO)
 
   // Obter o estado do useAuthStore
   const authStore = useAuthStore()
   // Obter o queryClient para pré-carregar os dados da empresa
   const queryClient = useQueryClient()
   
+  /**
+   * Hidrata a identidade e RECONCILIA as duas credenciais.
+   *
+   * O app carrega duas coisas independentes:
+   *
+   *   - o cookie `authData`, que o middleware lê para ROTEAR (e que não
+   *     autoriza nada — ver o comentário em src/middleware.ts);
+   *   - a sessão do Supabase, guardada pelo GoTrue, que é o que o RLS
+   *     enxerga e portanto o que decide quais linhas existem.
+   *
+   * Elas podem se separar: a sessão expira, o storage é limpo, uma troca de
+   * chave ou de versão do supabase-js a invalida — e o cookie, que vive 7
+   * dias e não sabe de nada disso, continua lá.
+   *
+   * Quando isso acontece o app se comporta como logado e o banco responde
+   * como anônimo. Não dá erro em lugar nenhum: o RLS simplesmente devolve
+   * zero linha, e a tela renderiza vazia. Num produto clínico esse é o pior
+   * modo de falha possível — o médico abre a agenda, lê "0 atendimentos" e
+   * conclui que não tem consultas, quando na verdade precisa entrar de novo.
+   *
+   * Por isso a sessão é a fonte da verdade aqui: sem ela, o cookie é
+   * descartado e a pessoa volta para o login.
+   */
   useEffect(() => {
-    // Carregar dados de autenticação dos cookies
-    const authData = getAuthToken()
-    
-    if (authData) {
+    let cancelado = false
+
+    async function hidratar() {
+      const authData = getAuthToken()
+
+      if (!authData) {
+        if (cancelado) return
+        // Nenhum dado de autenticação encontrado nos cookies
+        // Garantir que o estado local e o authStore estejam limpos
+        authStore.clearAuth()
+        set_user(USUARIO_VAZIO)
+        return
+      }
+
+      // `getSession` lê do storage e não vai à rede; quando o token está
+      // vencido mas o refresh ainda vale, o próprio GoTrue renova. Um `null`
+      // aqui significa que não há sessão recuperável — não que a rede falhou.
+      const { data } = await supabase.auth.getSession()
+      if (cancelado) return
+
+      if (!data.session) {
+        console.warn(
+          "[auth] cookie authData sem sessão do Supabase — a sessão expirou ou foi invalidada. Encerrando para forçar novo login."
+        )
+        destroyCookie(null, "authData", { path: "/" })
+        authStore.clearAuth()
+        set_user(USUARIO_VAZIO)
+        queryClient.clear()
+        // `replace`, não `push`: o estado deslogado não é um passo do
+        // histórico para o qual faça sentido voltar.
+        router.replace("/login")
+        return
+      }
+
       // Sincronizar os dados do AuthContext com o useAuthStore
       authStore.setAuth(authData)
 
       // Atualizar o estado local
       set_user(authData)
-    } else {
-      // Nenhum dado de autenticação encontrado nos cookies
-      // Garantir que o estado local e o authStore estejam limpos
-      authStore.clearAuth()
-      set_user({
-        user_id: "",
-        company_id: "",
-        hashed_password: "",
-        role: "owner",
-      })
     }
+
+    hidratar()
+    return () => {
+      cancelado = true
+    }
+  }, [])
+
+  /**
+   * A mesma reconciliação, para quando a sessão morre com a aba ABERTA.
+   *
+   * A checagem de montagem não cobre o caso mais incômodo: o refresh token
+   * falha no meio do uso e o GoTrue emite `SIGNED_OUT`. Sem isto, a tela
+   * continua montada e vai esvaziando à medida que cada consulta volta sem
+   * linha — para um médico em atendimento, é a hora pior de acontecer.
+   *
+   * Só `SIGNED_OUT` age. `INITIAL_SESSION` chega no carregamento e é assunto
+   * do efeito acima; `TOKEN_REFRESHED` é a renovação dando certo.
+   */
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento !== "SIGNED_OUT") return
+      destroyCookie(null, "authData", { path: "/" })
+      authStore.clearAuth()
+      set_user(USUARIO_VAZIO)
+      queryClient.clear()
+      router.replace("/login")
+    })
+    return () => sub.subscription.unsubscribe()
   }, [])
 
   function getAuthToken(): AuthToken | null {
@@ -282,15 +356,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Limpar o estado do useAuthStore
       authStore.clearAuth()
-      
+
       // Limpar o estado local
-      set_user({
-        user_id: "",
-        company_id: "",
-        hashed_password: "",
-        role: "owner",
-      })
-      
+      set_user(USUARIO_VAZIO)
+
       // Emitir evento personalizado para notificar sobre o logout
       if (typeof window !== "undefined" && companyId) {
         const logoutEvent = new CustomEvent('myia:auth:logout', { 
