@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { mkdir, writeFile, unlink } from "node:fs/promises"
 import { createClient } from "@supabase/supabase-js"
+import { supabasePublishableKey } from "@/lib/supabase/keys"
 import { escutaDisponivel } from "@/lib/escuta/disponibilidade"
 import type { TemplateField } from "@/hooks/useMedicalRecords"
 
@@ -20,8 +21,13 @@ export const dynamic = "force-dynamic"
  * profissional/empresa que elas fazem continuam valendo. Service role
  * desligaria justamente essas checagens e obrigaria a reimplementá-las aqui.
  *
- * O ÁUDIO NÃO É GRAVADO EM DISCO. Chega no corpo da requisição, vai para o
- * transcritor e sai do processo. Nada o escreve em lugar nenhum.
+ * O ÁUDIO É GRAVADO EM DISCO, e só até ser transcrito. Desde 0027 esta rota
+ * não transcreve: ela escreve o arquivo num volume do nosso servidor,
+ * enfileira e responde 202. Quem apaga é o worker, assim que termina — e a
+ * varredura de 0027 cobre o caso de ele morrer no meio.
+ *
+ * (Até 0026 este comentário dizia que nada escrevia o áudio em lugar nenhum.
+ * Era verdade enquanto a transcrição acontecia dentro da requisição.)
  */
 function clienteDoUsuario(req: Request) {
   const authz = req.headers.get("authorization") || ""
@@ -30,7 +36,12 @@ function clienteDoUsuario(req: Request) {
 
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    // Pelo helper, NÃO por env direta: ele dá precedência à chave nova
+    // (`sb_publishable_`). Lendo NEXT_PUBLIC_SUPABASE_ANON_KEY aqui, esta
+    // rota passou a devolver 404 no dia em que as chaves legadas foram
+    // revogadas — o PostgREST recusava o `apikey` morto e o erro chegava
+    // como "sessão não encontrada", que aponta para o lugar errado.
+    supabasePublishableKey!,
     { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } }
   )
 }

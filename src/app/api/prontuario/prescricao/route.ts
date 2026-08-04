@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { supabasePublishableKey } from "@/lib/supabase/keys"
 import {
   memedConfig,
   tokenDoPrescritor,
@@ -25,7 +26,12 @@ function clienteDoUsuario(req: Request) {
   if (!token) return null
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    // Pelo helper, NÃO por env direta: ele dá precedência à chave nova
+    // (`sb_publishable_`). Lendo NEXT_PUBLIC_SUPABASE_ANON_KEY aqui, esta
+    // rota passou a devolver 404 no dia em que as chaves legadas foram
+    // revogadas — o PostgREST recusava o `apikey` morto e o erro chegava
+    // como "sessão não encontrada", que aponta para o lugar errado.
+    supabasePublishableKey!,
     { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } }
   )
 }
