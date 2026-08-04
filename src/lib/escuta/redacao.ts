@@ -14,13 +14,52 @@ import type { TemplateField } from "@/hooks/useMedicalRecords"
  * campo que o modelo define.
  */
 
-const MODELO = process.env.ESCUTA_MODEL ?? "claude-opus-5"
 const MAX_TOKENS = Number(process.env.ESCUTA_MAX_TOKENS ?? 8000)
+
+/**
+ * QUEM REDIGE é configurável; O QUE SE PEDE, não.
+ *
+ * O esquema derivado do template, o prompt clínico e a filtragem final são
+ * compartilhados por todos os provedores — são eles que definem o que conta
+ * como um rascunho aceitável, e não podem variar com a conta que a clínica
+ * conseguiu abrir. O que muda abaixo é só a chamada.
+ *
+ * `anthropic` continua o alvo para escala. `openai-compat` existe para validar
+ * sem custo (Groq) e serve qualquer servidor que fale o mesmo protocolo.
+ */
+// Lido a cada chamada, não no carregamento do módulo: um `const` no topo
+// congela o valor no primeiro import, o que torna o comportamento dependente
+// da ordem de importação e o portão impossível de testar sem subir um
+// processo por configuração.
+function provedor(): string {
+  return process.env.ESCUTA_PROVIDER ?? "anthropic"
+}
+
+function modeloPadrao(): string {
+  if (process.env.ESCUTA_MODEL) return process.env.ESCUTA_MODEL
+  return provedor() === "anthropic" ? "claude-opus-5" : "openai/gpt-oss-120b"
+}
 
 let cliente: Anthropic | null = null
 function getCliente(): Anthropic {
   if (!cliente) cliente = new Anthropic()
   return cliente
+}
+
+/** O que falta para a redação funcionar; `null` quando está pronta. */
+export function redacaoPendencia(): string | null {
+  if (provedor() === "anthropic") {
+    return process.env.ANTHROPIC_API_KEY
+      ? null
+      : "A redação por IA não está configurada nesta instalação (falta ANTHROPIC_API_KEY)."
+  }
+  if (provedor() === "openai-compat") {
+    if (!process.env.ESCUTA_BASE_URL) {
+      return "A redação por IA não está configurada nesta instalação (falta ESCUTA_BASE_URL)."
+    }
+    return null
+  }
+  return `Provedor de redação desconhecido: "${provedor()}". Disponíveis: anthropic, openai-compat.`
 }
 
 export class RedacaoIndisponivel extends Error {
@@ -68,16 +107,78 @@ export interface RascunhoGerado {
   modelo: string
 }
 
+/**
+ * Redator via protocolo da OpenAI (Groq e afins).
+ *
+ * `strict: true` liga decodificação restrita: o modelo NÃO CONSEGUE devolver
+ * fora do esquema. Sem isso o `json_schema` é só uma sugestão forte, e o que
+ * sai daqui vai direto para `content` do prontuário. No Groq, `strict` só
+ * existe em `openai/gpt-oss-20b` e `openai/gpt-oss-120b` — é por isso que o
+ * padrão é o 120b, e não um modelo maior que não garante a forma.
+ */
+async function redigirOpenAICompat(
+  esquema: object,
+  cabecalho: string,
+  transcricao: string
+): Promise<{ texto: string; modelo: string }> {
+  const base = (process.env.ESCUTA_BASE_URL ?? "").replace(/\/+$/, "")
+  const modelo = modeloPadrao()
+  const chave = process.env.ESCUTA_API_KEY
+
+  const resp = await fetch(`${base}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(chave ? { Authorization: `Bearer ${chave}` } : {}),
+    },
+    body: JSON.stringify({
+      model: modelo,
+      max_completion_tokens: MAX_TOKENS,
+      messages: [
+        { role: "system", content: SISTEMA },
+        { role: "user", content: `${cabecalho}\n\nTranscrição da consulta:\n\n${transcricao}` },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "prontuario", schema: esquema, strict: true },
+      },
+    }),
+  })
+
+  if (!resp.ok) {
+    const detalhe = await resp.text().catch(() => "")
+    throw new RedacaoIndisponivel(`A redação falhou (${resp.status}). ${detalhe.slice(0, 200)}`)
+  }
+
+  const json: any = await resp.json()
+  const escolha = json?.choices?.[0]
+
+  // Mesma checagem que existe no caminho da Anthropic, pelo mesmo motivo: ler
+  // o conteúdo antes de saber por que a geração parou esconde a causa.
+  if (escolha?.finish_reason === "length") {
+    throw new RedacaoIndisponivel(
+      "A consulta foi longa demais para um rascunho só. Escreva o prontuário manualmente."
+    )
+  }
+  if (escolha?.message?.refusal) {
+    throw new RedacaoIndisponivel(
+      "O modelo recusou redigir a partir desta transcrição. Escreva o prontuário manualmente."
+    )
+  }
+
+  const texto = escolha?.message?.content
+  if (!texto) throw new RedacaoIndisponivel("O modelo não devolveu texto.")
+
+  return { texto, modelo: json?.model ?? modelo }
+}
+
 export async function redigirRascunho(
   transcricao: string,
   campos: TemplateField[],
   contexto: { paciente?: string | null; servico?: string | null }
 ): Promise<RascunhoGerado> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new RedacaoIndisponivel(
-      "A redação por IA não está configurada nesta instalação (falta ANTHROPIC_API_KEY)."
-    )
-  }
+  const pendente = redacaoPendencia()
+  if (pendente) throw new RedacaoIndisponivel(pendente)
   if (!campos.length) {
     throw new RedacaoIndisponivel("O modelo de prontuário não tem campos.")
   }
@@ -89,46 +190,56 @@ export async function redigirRascunho(
     .filter(Boolean)
     .join("\n")
 
+  const esquema = esquemaDoTemplate(campos)
+
   try {
-    const resposta = await getCliente().messages.create({
-      model: MODELO,
-      max_tokens: MAX_TOKENS,
-      system: SISTEMA,
-      output_config: {
-        effort: "high",
-        format: {
-          type: "json_schema",
-          schema: esquemaDoTemplate(campos),
+    let texto: string
+    let modeloUsado: string
+
+    if (provedor() === "openai-compat") {
+      const r = await redigirOpenAICompat(esquema, cabecalho, transcricao)
+      texto = r.texto
+      modeloUsado = r.modelo
+    } else {
+      const resposta = await getCliente().messages.create({
+        model: modeloPadrao(),
+        max_tokens: MAX_TOKENS,
+        system: SISTEMA,
+        output_config: {
+          effort: "high",
+          format: { type: "json_schema", schema: esquema },
         },
-      },
-      messages: [
-        {
-          role: "user",
-          content: `${cabecalho}\n\nTranscrição da consulta:\n\n${transcricao}`,
-        },
-      ],
-    })
+        messages: [
+          {
+            role: "user",
+            content: `${cabecalho}\n\nTranscrição da consulta:\n\n${transcricao}`,
+          },
+        ],
+      })
 
-    // `stop_reason` antes de ler o conteúdo: numa recusa o array vem vazio e
-    // indexar content[0] estoura. Numa consulta sobre tema sensível isso é
-    // plausível o bastante para tratar.
-    if (resposta.stop_reason === "refusal") {
-      throw new RedacaoIndisponivel(
-        "O modelo recusou redigir a partir desta transcrição. Escreva o prontuário manualmente."
-      )
-    }
-    if (resposta.stop_reason === "max_tokens") {
-      throw new RedacaoIndisponivel(
-        "A consulta foi longa demais para um rascunho só. Escreva o prontuário manualmente."
-      )
+      // `stop_reason` antes de ler o conteúdo: numa recusa o array vem vazio e
+      // indexar content[0] estoura. Numa consulta sobre tema sensível isso é
+      // plausível o bastante para tratar.
+      if (resposta.stop_reason === "refusal") {
+        throw new RedacaoIndisponivel(
+          "O modelo recusou redigir a partir desta transcrição. Escreva o prontuário manualmente."
+        )
+      }
+      if (resposta.stop_reason === "max_tokens") {
+        throw new RedacaoIndisponivel(
+          "A consulta foi longa demais para um rascunho só. Escreva o prontuário manualmente."
+        )
+      }
+
+      const bloco = resposta.content.find((b) => b.type === "text")
+      if (!bloco || bloco.type !== "text") {
+        throw new RedacaoIndisponivel("O modelo não devolveu texto.")
+      }
+      texto = bloco.text
+      modeloUsado = resposta.model
     }
 
-    const bloco = resposta.content.find((b) => b.type === "text")
-    if (!bloco || bloco.type !== "text") {
-      throw new RedacaoIndisponivel("O modelo não devolveu texto.")
-    }
-
-    const bruto = JSON.parse(bloco.text) as Record<string, unknown>
+    const bruto = JSON.parse(texto) as Record<string, unknown>
 
     // Filtra pelas chaves do modelo mesmo com structured outputs garantindo a
     // forma: o que chega aqui vai direto para `content` do prontuário, e essa
@@ -139,7 +250,7 @@ export async function redigirRascunho(
       content[c.key] = typeof v === "string" ? v.trim() : ""
     }
 
-    return { content, modelo: resposta.model }
+    return { content, modelo: modeloUsado }
   } catch (err: any) {
     if (err instanceof RedacaoIndisponivel) throw err
     if (err instanceof Anthropic.RateLimitError) {

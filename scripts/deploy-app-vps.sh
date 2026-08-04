@@ -96,8 +96,13 @@ RUNTIME_KEYS=(
   # env file, e não descobrir que o valor nunca chegava ao container.
   TRANSCRICAO_PROVIDER
   TRANSCRICAO_API_KEY
+  TRANSCRICAO_BASE_URL
   TRANSCRICAO_MODELO
+  ESCUTA_PROVIDER
+  ESCUTA_BASE_URL
+  ESCUTA_API_KEY
   ESCUTA_MODEL
+  ESCUTA_MAX_TOKENS
   # A SECRET da Memed é server-only e não pode virar NEXT_PUBLIC_ nunca.
   MEMED_API_KEY
   MEMED_SECRET_KEY

@@ -38,6 +38,21 @@ export interface Transcritor {
   transcrever(audio: Blob, opcoes: { idioma: string }): Promise<TranscricaoResultado>
 }
 
+/**
+ * Cada fornecedor declara o que precisa para funcionar.
+ *
+ * Existe porque os requisitos divergem de verdade: um serviço na nuvem exige
+ * chave; um servidor nosso na rede interna exige endereço e chave nenhuma.
+ * Enquanto essa checagem morou fora daqui — numa conjunção fixa de duas
+ * variáveis de ambiente dentro de `escutaDisponivel()` —, ela dizia
+ * "indisponível" para qualquer arranjo que não fosse o original.
+ */
+interface Fabrica {
+  criar(): Transcritor
+  /** `null` quando está pronto; a mensagem para o operador quando não está. */
+  pendencia(): string | null
+}
+
 export class TranscricaoIndisponivel extends Error {
   constructor(mensagem: string) {
     super(mensagem)
@@ -105,13 +120,75 @@ function deepgram(apiKey: string): Transcritor {
 }
 
 /**
+ * Qualquer servidor que fale o protocolo de transcrição da OpenAI.
+ *
+ * É UM provedor, não três, de propósito: o mesmo código atende o Whisper que
+ * roda no nosso VPS, o Groq e a própria OpenAI — muda `TRANSCRICAO_BASE_URL`.
+ * Foi o que permitiu tirar o áudio de consulta de um serviço externo sem
+ * escrever integração nova.
+ *
+ * A chave é OPCIONAL. O servidor na nossa rede interna não pede autenticação,
+ * e mandar `Authorization: Bearer undefined` faz alguns rejeitarem a
+ * requisição — por isso o header só aparece quando há chave de verdade.
+ */
+function openaiCompat(apiKey: string | undefined): Transcritor {
+  return {
+    nome: "openai-compat",
+    async transcrever(audio, { idioma }) {
+      const base = (process.env.TRANSCRICAO_BASE_URL ?? "").replace(/\/+$/, "")
+      const modelo = process.env.TRANSCRICAO_MODELO ?? "Systran/faster-whisper-small"
+
+      const form = new FormData()
+      form.append("file", audio, "consulta.webm")
+      form.append("model", modelo)
+      form.append("language", idioma)
+      // `verbose_json` é o que traz `duration`; o `json` simples só traz texto.
+      form.append("response_format", "verbose_json")
+
+      const resp = await fetch(`${base}/audio/transcriptions`, {
+        method: "POST",
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+        body: form,
+      })
+
+      if (!resp.ok) {
+        const detalhe = await resp.text().catch(() => "")
+        throw new TranscricaoIndisponivel(
+          `Transcrição falhou (${resp.status}). ${detalhe.slice(0, 200)}`
+        )
+      }
+
+      const json: any = await resp.json()
+      const texto = String(json?.text ?? "").trim()
+
+      if (!texto) {
+        throw new TranscricaoIndisponivel(
+          "A transcrição voltou vazia. O microfone pode não ter captado áudio."
+        )
+      }
+
+      return { texto, duracao: json?.duration, modelo: `${base}/${modelo}` }
+    },
+  }
+}
+
+/**
  * Registro de fornecedores.
  *
- * Para acrescentar um: escreva a função no formato acima e ponha aqui. O resto
- * do sistema não muda.
+ * Para acrescentar um: escreva a função no formato acima e ponha aqui, junto
+ * com o que ele exige para funcionar. O resto do sistema não muda.
  */
-const transcritores: Record<string, (apiKey: string) => Transcritor> = {
-  deepgram,
+const transcritores: Record<string, Fabrica> = {
+  deepgram: {
+    criar: () => deepgram(process.env.TRANSCRICAO_API_KEY!),
+    pendencia: () =>
+      process.env.TRANSCRICAO_API_KEY ? null : "falta TRANSCRICAO_API_KEY",
+  },
+  "openai-compat": {
+    criar: () => openaiCompat(process.env.TRANSCRICAO_API_KEY),
+    pendencia: () =>
+      process.env.TRANSCRICAO_BASE_URL ? null : "falta TRANSCRICAO_BASE_URL",
+  },
 }
 
 /**
@@ -124,25 +201,23 @@ const transcritores: Record<string, (apiKey: string) => Transcritor> = {
  * antes de ligar o microfone.
  */
 export function getTranscritor(): Transcritor {
-  const provedor = process.env.TRANSCRICAO_PROVIDER ?? "deepgram"
-  const apiKey = process.env.TRANSCRICAO_API_KEY
+  const pendente = transcricaoPendencia()
+  if (pendente) throw new TranscricaoIndisponivel(pendente)
+  return transcritores[process.env.TRANSCRICAO_PROVIDER ?? "deepgram"].criar()
+}
 
+/** O que falta para a transcrição funcionar; `null` quando está pronta. */
+export function transcricaoPendencia(): string | null {
+  const provedor = process.env.TRANSCRICAO_PROVIDER ?? "deepgram"
   const fabrica = transcritores[provedor]
   if (!fabrica) {
-    throw new TranscricaoIndisponivel(
-      `Provedor de transcrição desconhecido: "${provedor}". Disponíveis: ${Object.keys(transcritores).join(", ")}.`
-    )
+    return `Provedor de transcrição desconhecido: "${provedor}". Disponíveis: ${Object.keys(transcritores).join(", ")}.`
   }
-  if (!apiKey) {
-    throw new TranscricaoIndisponivel(
-      "A transcrição não está configurada nesta instalação (falta TRANSCRICAO_API_KEY)."
-    )
-  }
-
-  return fabrica(apiKey)
+  const p = fabrica.pendencia()
+  return p ? `A transcrição não está configurada nesta instalação (${p}).` : null
 }
 
-/** A escuta só é oferecida quando as duas pontas estão configuradas. */
-export function escutaDisponivel(): boolean {
-  return Boolean(process.env.TRANSCRICAO_API_KEY && process.env.ANTHROPIC_API_KEY)
-}
+// `escutaDisponivel()` mudou para ./disponibilidade.ts: ela depende das DUAS
+// pontas, e mantê-la aqui obrigava este módulo a importar o de redação — o que
+// acopla transcrição a redação sem necessidade e impede que cada um seja
+// carregado sozinho num teste.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { getTranscritor, escutaDisponivel, TranscricaoIndisponivel } from "@/lib/escuta/transcricao"
+import { getTranscritor, TranscricaoIndisponivel } from "@/lib/escuta/transcricao"
+import { escutaDisponivel } from "@/lib/escuta/disponibilidade"
 import { redigirRascunho, RedacaoIndisponivel } from "@/lib/escuta/redacao"
 import type { TemplateField } from "@/hooks/useMedicalRecords"
 
