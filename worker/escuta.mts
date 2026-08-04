@@ -1,5 +1,5 @@
 import { readFile, unlink } from "node:fs/promises"
-import { supabase } from "./supabase.mts"
+import { supabaseServer } from "./supabase.mts"
 
 /**
  * Escuta do prontuário — o lado longo, fora da requisição HTTP.
@@ -36,7 +36,7 @@ export interface SessaoEscuta {
 // ---------------------------------------------------------------------------
 
 export async function claimSessoes(workerId: string, limite: number): Promise<SessaoEscuta[]> {
-  const { data, error } = await supabase.rpc("claim_listening_sessions", {
+  const { data, error } = await supabaseServer.rpc("claim_listening_sessions", {
     p_worker: workerId,
     p_limit: limite,
   })
@@ -45,7 +45,7 @@ export async function claimSessoes(workerId: string, limite: number): Promise<Se
 }
 
 export async function reapSessoes(timeoutSegundos: number): Promise<number> {
-  const { data, error } = await supabase.rpc("reap_listening_sessions", {
+  const { data, error } = await supabaseServer.rpc("reap_listening_sessions", {
     p_timeout_seconds: timeoutSegundos,
     p_max_attempts: 3,
   })
@@ -60,7 +60,7 @@ export async function reapSessoes(timeoutSegundos: number): Promise<number> {
  * arquivo que não existe mais não é erro: o objetivo era exatamente esse.
  */
 export async function varrerAudioOrfao(): Promise<number> {
-  const { data, error } = await supabase.rpc("sweep_listening_audio", {
+  const { data, error } = await supabaseServer.rpc("sweep_listening_audio", {
     p_older_than_hours: 6,
   })
   if (error) throw error
@@ -88,7 +88,7 @@ async function marcar(
   transcript?: string | null,
   falha?: string | null
 ): Promise<void> {
-  const { error } = await supabase.rpc("worker_update_listening_session", {
+  const { error } = await supabaseServer.rpc("worker_update_listening_session", {
     p_session_id: id,
     p_status: status,
     p_transcript: transcript ?? null,
@@ -140,7 +140,7 @@ export async function processarEscuta(s: SessaoEscuta): Promise<void> {
   // Contexto do rascunho: nome do paciente e serviço. Lido com a chave de
   // serviço porque o worker não tem sessão de médico — o escopo vem da própria
   // sessão, que só existe porque um médico autenticado a criou.
-  const { data: ctx } = await supabase
+  const { data: ctx } = await supabaseServer
     .from("myia_listening_sessions")
     .select(
       "myia_record_templates(fields), myia_appointments(cliente_nome, myia_services(name))"
@@ -169,7 +169,7 @@ export async function processarEscuta(s: SessaoEscuta): Promise<void> {
       servico: svc?.name ?? null,
     })
 
-    const { error } = await supabase.rpc("worker_finish_listening_session", {
+    const { error } = await supabaseServer.rpc("worker_finish_listening_session", {
       p_session_id: s.id,
       p_content: content,
       p_ai_model: modelo,

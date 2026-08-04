@@ -322,13 +322,20 @@ export function EscutaView(m: IEscutaModel) {
                   <h2 className="text-base font-semibold leading-tight">
                     3. Consentimento do paciente
                   </h2>
+                  {/* Este parágrafo é o que o médico lê para o paciente. Ele
+                      descreve o que acontece com a gravação de alguém, então
+                      precisa acompanhar a implementação: desde 0027 o áudio
+                      fica no servidor da clínica até ser transcrito, e dizer
+                      "não fica armazenado" sem qualificar virou impreciso
+                      justamente no consentimento. */}
                   <p className="mt-2 max-w-[62ch] text-sm text-muted-foreground">
                     Gravar uma consulta sem aceite explícito não é opção sob a
-                    LGPD. O áudio é usado apenas para gerar este prontuário e{" "}
+                    LGPD. O áudio é usado apenas para gerar este prontuário:
+                    fica no servidor da clínica só até ser transcrito e{" "}
                     <strong className="font-medium text-foreground">
-                      não fica armazenado
+                      é apagado em seguida
                     </strong>{" "}
-                    — só a transcrição e o registro clínico permanecem.
+                    — permanecem só a transcrição e o registro clínico.
                   </p>
 
                   <div className="mt-4 flex items-start gap-3">
