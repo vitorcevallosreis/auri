@@ -262,6 +262,19 @@ ssh "${VPS_HOST}" "docker network inspect '${DOCKER_NETWORK}' >/dev/null 2>&1 ||
   exit 1
 }"
 
+# O volume do áudio nasce pertencendo ao ROOT, e os dois containers rodam como
+# uid 1001 (`nextjs` no app, `worker` no worker) — sem este chown, a primeira
+# gravação morre com EACCES e a tela diz "Não consegui guardar a gravação",
+# depois de o médico já ter conduzido a consulta inteira.
+#
+# Feito por container descartável porque o volume só existe do lado do Docker;
+# não há caminho no host para um chown direto. Idempotente: rodar de novo não
+# muda nada.
+log "Ajustando dono do volume de áudio (${ESCUTA_AUDIO_VOLUME} -> uid 1001)"
+ssh "${VPS_HOST}" "docker run --rm \
+  -v '${ESCUTA_AUDIO_VOLUME}:${ESCUTA_AUDIO_DIR}' \
+  alpine:3 chown -R 1001 '${ESCUTA_AUDIO_DIR}'"
+
 log "Parando/removendo container antigo (se existir)"
 ssh "${VPS_HOST}" "docker rm -f '${CONTAINER_NAME}' >/dev/null 2>&1 || true"
 

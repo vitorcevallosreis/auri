@@ -97,34 +97,27 @@ min", com base em benchmark de terceiros. **O real nesta máquina é ~1x com
 
 ---
 
-## O problema em aberto: a transcrição é síncrona
+## A transcrição é ASSÍNCRONA (resolvido em 0027)
 
-`route.ts` transcreve **dentro da requisição HTTP** (`maxDuration = 300`,
-nginx com `proxy_read_timeout 300s`).
+Até 0026 ela rodava dentro da requisição HTTP, o que limitava a consulta a
+~2,5 minutos com `medium`. Aumentar timeout não resolveria: manter uma
+requisição aberta por meia hora é frágil por natureza — queda de rede,
+reinício de container ou a aba fechando perderiam a consulta.
 
-Com `medium` a ~2x tempo real, **isso limita a consulta a ~2,5 minutos**.
-Serve para testar o fluxo inteiro; **não serve para consulta real**.
+Hoje: `POST /api/prontuario/escuta` grava o áudio no volume, enfileira e
+responde **202**. O worker (`worker/escuta.mts`) transcreve e redige, movendo
+`status` pelos estados que 0025 já tinha: `transcribing` → `drafting` →
+`done`. A tela acompanha por poll de 5s e pode ser fechada — o prontuário
+aparece na lista quando ficar pronto.
 
-Aumentar o timeout não resolve: manter uma requisição HTTP aberta por 30
-minutos é frágil por natureza — qualquer queda de rede, reinício de container
-ou fechamento de aba perde a consulta.
+A fila é a PRÓPRIA `myia_listening_sessions`, com `for update skip locked`.
+Não há tabela de jobs ao lado porque ela duplicaria a fonte da verdade.
 
-### O caminho certo: fila, como o agente já faz
-
-O projeto **já tem** a peça: `myia_agent_jobs` + `worker/index.mts`, com
-claim, reaper e shutdown gracioso. O desenho seria:
-
-1. `POST /api/prontuario/escuta` recebe o áudio, enfileira e responde na hora.
-2. O worker transcreve e redige, movendo `myia_listening_sessions.status`
-   pelos estados que **já existem**: `transcribing` → `drafting` → `done`.
-3. A tela acompanha o status — a sessão já é consultável por RLS.
-
-O áudio precisaria de um lugar temporário entre a requisição e o worker
-(volume do container ou bucket com expiração curta), **e apagá-lo depois é
-requisito, não detalhe** — ver decisão 1.
-
-O schema de 0025 já suporta isso sem migration: os estados intermediários
-existem justamente porque este caminho estava previsto.
+**O worker usa `service_role`** e por isso NÃO pode usar as RPCs de 0025
+(todas exigem `app_role() = 'professional'`). As portas dele derivam
+`professional_id` e `company_id` **da própria sessão**, nunca de parâmetro —
+recebê-los abriria escrita de prontuário em qualquer clínica para quem tivesse
+a chave de serviço.
 
 ---
 
@@ -205,15 +198,80 @@ Coisas que custaram tempo e não são óbvias no código.
 
 ---
 
+## Armadilhas do plano gratuito do Groq
+
+Descobertas testando de verdade, e nenhuma delas aparece antes da primeira
+consulta real.
+
+1. **`max_completion_tokens` conta INTEIRO no limite de tokens por minuto.**
+   O plano gratuito dá 8000 TPM. Com `ESCUTA_MAX_TOKENS=8000` (o default de
+   `redacao.ts`), toda redação era recusada com **413** antes de começar:
+   prompt ~640 + 8000 reservados = 8638 > 8000. Não importa que o modelo use
+   200. Baixado para 3000. Com a Anthropic esse acoplamento não existe.
+
+2. **Consulta longa vai bater no mesmo teto.** A transcrição entra no prompt:
+   ~2500 tokens numa consulta de 15 min. Com 3000 de resposta ainda cabe, mas
+   uma consulta de 40 minutos não vai caber. Quando isso acontecer, a saída é
+   plano pago do Groq ou voltar para a Anthropic.
+
+3. **`docker restart` NÃO recarrega o `--env-file`.** O ambiente é capturado
+   quando o container é CRIADO. Mudar `.env.runtime` e reiniciar não muda
+   nada — é preciso `docker rm -f` e `docker run` de novo. Custou duas
+   rodadas de teste com o mesmo 413 depois de "já ter corrigido".
+
+4. **O volume de áudio nasce pertencendo ao root** e os containers rodam como
+   uid 1001. Sem `chown`, a primeira gravação morre com `EACCES` e a tela diz
+   "Não consegui guardar a gravação" — depois de o médico ter conduzido a
+   consulta inteira. O deploy já faz o chown; não remova esse passo.
+
+---
+
+## Teste ponta a ponta que passou (04/08/2026)
+
+Amostra de 31s de fala clínica, pelo caminho real (sessão da médica, rota,
+fila, worker):
+
+```
+t+0s   transcribing
+t+40s  drafting
+t+45s  done
+```
+
+Transcrição (Whisper `medium`, no VPS):
+> "O paciente refere dor torácica a dois dias, sem febre, sem despneia, nega
+> tabagismo e nega uso de anticoagulante, fez o uso de dipirona e omeprazole,
+> ausculta pulmonar sem ruídos adventícios, hipótese diagnóstica, doença do
+> refluxo gastroisofágico, solicito hemograma e eletrocardiograma."
+
+Rascunho (`openai/gpt-oss-120b`, esquema estrito), já separado nos campos do
+modelo SOAP — e note que o modelo CORRIGIU os erros da transcrição
+("gastroisofágico" → "gastroesofágico", "despneia" → "dispneia"):
+
+```json
+{"chief_complaint":"dor torácica a dois dias",
+ "anamnesis":"sem febre, sem dispneia, nega tabagismo, nega uso de anticoagulante, fez uso de dipirona e omeprazole",
+ "physical_exam":"ausculta pulmonar sem ruídos adventícios",
+ "assessment":"doença do refluxo gastroesofágico",
+ "plan":"solicito hemograma e eletrocardiograma"}
+```
+
+Prontuário nasceu `source='ai'`, `review_status='pending'`, com procedência do
+modelo na tela. **O áudio foi apagado do volume** (`audio_path` nulo).
+
+Também exercitado o caminho de FALHA: áudio sem fala → "A transcrição voltou
+vazia. O microfone pode não ter captado áudio." → sessão `failed`, áudio
+apagado do mesmo jeito.
+
+---
+
 ## Estado em 2026-08-04
 
 - ✅ Container `auri-whisper` no ar, `medium`, diarização, sem porta publicada
 - ✅ Adaptadores dos dois lados, com o portão consertado e testado (7 casos)
 - ✅ Passo de subida no `scripts/deploy-app-vps.sh` (pula sozinho sem
   `TRANSCRICAO_API_KEY`; não derruba o deploy se o Whisper falhar)
-- ⏳ **Falta a chave do Groq** — sem a ponta de redação o portão fica fechado,
-  e corretamente: transcrever sem conseguir redigir produz áudio gravado e
-  nenhum prontuário
-- ⏳ **Assíncrono não implementado** — hoje o limite prático é ~2,5 min de
-  consulta
+- ✅ **Groq configurado** e a escuta LIGADA — portão devolve `disponivel: true`
+- ✅ **Assíncrono implementado (0027)** — a transcrição saiu da requisição HTTP
+  e roda no worker; não há mais limite prático de duração de consulta pelo
+  lado do HTTP (o limite que sobra é o de tokens do Groq, acima)
 - ⏳ Qualidade não validada com voz humana real
