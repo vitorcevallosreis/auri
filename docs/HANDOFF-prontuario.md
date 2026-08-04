@@ -16,6 +16,17 @@ estruturado por um **modelo** que a clínica configura, ele revisa, **assina** e
 **Duas pontas não foram exercitadas de verdade** porque dependem de chaves que não existem
 em nenhum ambiente local: a escuta (transcrição + Claude) e a Memed. Ver §6.
 
+> ⚠️ **A escuta mudou de stack em 04/08/2026** e este handoff não descreve mais o
+> arranjo atual. A transcrição saiu do Deepgram e passou a rodar **no nosso VPS**
+> (Whisper self-hosted, para o áudio não sair da máquina); a redação ganhou
+> adaptador e pode não ser a Anthropic.
+>
+> **Leia [`ESCUTA-decisoes.md`](./ESCUTA-decisoes.md) antes de mexer na escuta.**
+> Lá estão as medições reais de velocidade e qualidade por modelo, o motivo de
+> cada escolha, por qual stack trocar em cada situação, e as armadilhas já
+> pagas — incluindo o limite de ~2,5 min por consulta enquanto a transcrição
+> for síncrona.
+
 ---
 
 ## 2. Migrations (0022–0026)

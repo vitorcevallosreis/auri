@@ -48,6 +48,32 @@ WORKER_CONTAINER_NAME="${WORKER_CONTAINER_NAME:-auri-agent-worker}"
 # Plano 3 P3.2: o worker sobe junto por padrão. DEPLOY_WORKER=0 pula (útil para
 # um deploy só do painel).
 DEPLOY_WORKER="${DEPLOY_WORKER:-1}"
+
+# Whisper da escuta. Sobe junto por padrão, mas é PULADO sozinho quando
+# TRANSCRICAO_API_KEY não está no env file — instalação que não usa escuta não
+# carrega 827 MB de imagem nem 1,5 GB de RAM à toa.
+DEPLOY_WHISPER="${DEPLOY_WHISPER:-1}"
+WHISPER_IMAGE="${WHISPER_IMAGE:-hwdsl2/whisper-server}"
+WHISPER_CONTAINER_NAME="${WHISPER_CONTAINER_NAME:-auri-whisper}"
+# MEDIDO neste VPS (4 vCPU, sem GPU), 31s de fala clínica em português:
+#
+#   small   31s de processamento · 777 MB · "dor torácica" -> "doutorássica",
+#                                            "ausculta" -> "aos culta"
+#   medium  60s de processamento · 2,0 GB · acerta as duas
+#
+# `small` NÃO é aceitável para uso clínico: ele derrete justamente os termos
+# médicos, que é o conteúdo do prontuário. O custo do `medium` é 2x de tempo e
+# 1,2 GB a mais de RAM, e os dois cabem — a lentidão deixou de ser o critério
+# quando ficou claro que a transcrição precisa sair da requisição HTTP de
+# qualquer forma (ver docs/ESCUTA-decisoes.md).
+#
+# O servidor IGNORA o campo `model` da requisição: o modelo é o deste
+# container. Trocar aqui exige recriar o container, não basta mudar a chamada.
+WHISPER_MODEL="${WHISPER_MODEL:-medium}"
+WHISPER_LANGUAGE="${WHISPER_LANGUAGE:-pt}"
+# Diarização separa médico de paciente. É o requisito clínico que fez esta
+# imagem ser escolhida: sem ela, a IA atribui ao médico o que o paciente disse.
+WHISPER_DIARIZATION="${WHISPER_DIARIZATION:-true}"
 DOCKER_NETWORK="${DOCKER_NETWORK:-evolution_evolution-net}"
 HOST_PORT="${HOST_PORT:-127.0.0.1:3000}"
 
@@ -274,6 +300,68 @@ if [[ "${DEPLOY_WORKER}" == "1" ]]; then
   fi
 else
   log "DEPLOY_WORKER=0 — pulando o worker"
+fi
+
+# ---------------------------------------------------------------------------
+# 5b. Whisper — transcrição da escuta, na nossa própria máquina
+# ---------------------------------------------------------------------------
+# POR QUE SELF-HOSTED. O áudio de uma consulta é o dado mais sensível que este
+# sistema toca. Rodando aqui, ele nunca sai do servidor: o container não publica
+# porta (sem -p) e só é alcançável pelo nome de serviço dentro da rede do
+# Docker. Só a TRANSCRIÇÃO segue para o redator, e mesmo isso é escolha de
+# `ESCUTA_PROVIDER`.
+#
+# Não é imagem nossa e não é construída aqui — vem pronta do registry, então o
+# passo é `pull` e não `build`. `DEPLOY_WHISPER=0` pula.
+#
+# O modelo é baixado no primeiro uso e fica no volume. Sem o volume, cada
+# restart rebaixaria ~500 MB e a primeira consulta depois de cada deploy
+# esperaria por isso.
+if [[ "${DEPLOY_WHISPER}" == "1" ]]; then
+  if [[ -z "${TRANSCRICAO_API_KEY:-}" ]]; then
+    log "TRANSCRICAO_API_KEY vazia — pulando o Whisper (a escuta sobe desligada)"
+  else
+    log "docker pull ${WHISPER_IMAGE}"
+    ssh "${VPS_HOST}" "docker pull '${WHISPER_IMAGE}'"
+
+    log "Parando/removendo Whisper antigo (se existir)"
+    ssh "${VPS_HOST}" "docker rm -f '${WHISPER_CONTAINER_NAME}' >/dev/null 2>&1 || true"
+
+    log "Subindo ${WHISPER_CONTAINER_NAME} na rede ${DOCKER_NETWORK}"
+    # O token é o MESMO que o app usa em TRANSCRICAO_API_KEY. Sem ele a imagem
+    # gera um sozinha no primeiro boot, e aí o app não saberia qual é.
+    ssh "${VPS_HOST}" "docker run -d \
+      --name '${WHISPER_CONTAINER_NAME}' \
+      --restart always \
+      --network '${DOCKER_NETWORK}' \
+      -v whisper-data:/var/lib/whisper \
+      -e WHISPER_MODEL='${WHISPER_MODEL}' \
+      -e WHISPER_LANGUAGE='${WHISPER_LANGUAGE}' \
+      -e WHISPER_DIARIZATION='${WHISPER_DIARIZATION}' \
+      -e WHISPER_API_KEY='${TRANSCRICAO_API_KEY}' \
+      '${WHISPER_IMAGE}'"
+
+    # A prova de vida é o log: a imagem não documenta endpoint de health, e
+    # bater no /v1 sem token só devolveria 401 — que não distingue "de pé" de
+    # "subiu quebrado".
+    log "Aguardando o Whisper ficar pronto (até 180s — o modelo é baixado no 1º boot)"
+    if ssh "${VPS_HOST}" "for i in \$(seq 1 60); do
+         docker logs '${WHISPER_CONTAINER_NAME}' 2>&1 | grep -qi 'ready' && exit 0
+         docker ps -q -f name='${WHISPER_CONTAINER_NAME}' | grep -q . || exit 1
+         sleep 3
+       done; exit 1"; then
+      log "WHISPER OK — ${WHISPER_CONTAINER_NAME} de pé"
+    else
+      printf '\n\033[1;31mWhisper não ficou pronto. Logs:\033[0m\n' >&2
+      ssh "${VPS_HOST}" "docker logs --tail 40 '${WHISPER_CONTAINER_NAME}' 2>&1" >&2 || true
+      # NÃO derruba o deploy: a escuta é uma feature entre várias, e o app
+      # degrada sozinho quando a transcrição não responde. Derrubar aqui
+      # impediria de subir correção de qualquer outra coisa.
+      printf '\033[1;33mSeguindo mesmo assim — a escuta fica indisponível.\033[0m\n' >&2
+    fi
+  fi
+else
+  log "DEPLOY_WHISPER=0 — pulando o Whisper"
 fi
 
 # ---------------------------------------------------------------------------
