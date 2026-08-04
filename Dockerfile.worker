@@ -35,6 +35,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --chown=worker:nodejs package.json ./
 COPY --chown=worker:nodejs worker ./worker
 
+# Os adaptadores da escuta (0027) são COMPARTILHADOS com o app: transcrever e
+# redigir têm que se comportar igual nos dois lados, e duplicar o código aqui
+# seria garantir que um dia divergissem. `worker/escuta.mts` os importa por
+# caminho relativo — sem esta cópia, o import só falha em produção, no primeiro
+# áudio que chega.
+#
+# Só `lib/escuta` entra. O resto de `src/` depende do alias `@/` e do bundler
+# do Next, que este worker não tem. Isso funciona porque a única dependência
+# desses dois arquivos para fora é `import type`, que o strip-types apaga.
+COPY --chown=worker:nodejs src/lib/escuta ./src/lib/escuta
+
 # O worker é autocontido: tem o próprio client Supabase (worker/supabase.mts).
 # Importar o do app faria o Node carregar um .ts que ele classifica como
 # CommonJS, funcionando só por reparse — dependência frágil para subir em

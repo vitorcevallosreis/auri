@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
+import { mkdir, writeFile, unlink } from "node:fs/promises"
 import { createClient } from "@supabase/supabase-js"
-import { getTranscritor, TranscricaoIndisponivel } from "@/lib/escuta/transcricao"
 import { escutaDisponivel } from "@/lib/escuta/disponibilidade"
-import { redigirRascunho, RedacaoIndisponivel } from "@/lib/escuta/redacao"
 import type { TemplateField } from "@/hooks/useMedicalRecords"
 
-// A transcrição de uma consulta inteira mais a redação passam de 30s. Sem isto
-// a rota é cortada no meio e o médico perde o atendimento gravado.
+// Agora a rota só RECEBE o áudio e enfileira, então o tempo aqui é o do upload.
+// Continua alto porque a consulta pode ter dezenas de MB numa conexão de
+// consultório — mas o trabalho longo saiu daqui (0027).
 export const maxDuration = 300
 export const dynamic = "force-dynamic"
 
@@ -82,71 +82,68 @@ export async function POST(req: Request) {
     : (sessao as any).myia_record_templates
   const campos: TemplateField[] = Array.isArray(tpl?.fields) ? tpl.fields : []
 
+  // Vale a checagem AQUI, com o médico esperando, mesmo que o worker vá
+  // refazê-la: um modelo sem campos é erro de configuração da clínica, e
+  // descobrir isso agora é um aviso na tela — descobrir depois é uma consulta
+  // gravada que nunca vira prontuário.
   if (!campos.length) {
     await marcarFalha(supabase, sessionId, "O modelo de prontuário não tem campos.")
     return NextResponse.json({ erro: "O modelo de prontuário não tem campos." }, { status: 400 })
   }
 
-  const appt: any = Array.isArray((sessao as any).myia_appointments)
-    ? (sessao as any).myia_appointments[0]
-    : (sessao as any).myia_appointments
-  const svc = appt && (Array.isArray(appt.myia_services) ? appt.myia_services[0] : appt.myia_services)
-
-  // ------------------------------------------------------------------ transcrição
-  let transcricao: string
+  // ------------------------------------------------------------------ entrega
+  // O áudio vai para o disco e a requisição termina. Quem transcreve é o
+  // worker — ver o cabeçalho de 0027 para o porquê e para a ressalva de LGPD
+  // que isso carrega.
+  let caminho: string
   try {
-    await supabase.rpc("update_listening_session", {
-      p_session_id: sessionId,
-      p_status: "transcribing",
-    })
-    const r = await getTranscritor().transcrever(audio, { idioma: "pt-BR" })
-    transcricao = r.texto
-  } catch (err: any) {
-    const msg =
-      err instanceof TranscricaoIndisponivel ? err.message : "A transcrição falhou."
-    console.error("[escuta] transcrição:", msg, err)
-    await marcarFalha(supabase, sessionId, msg)
-    return NextResponse.json({ erro: msg }, { status: 502 })
+    caminho = await guardarAudio(sessionId, audio)
+  } catch (err) {
+    console.error("[escuta] gravação do áudio:", err)
+    await marcarFalha(supabase, sessionId, "Não consegui guardar a gravação.")
+    return NextResponse.json({ erro: "Não consegui guardar a gravação." }, { status: 500 })
   }
 
-  // ------------------------------------------------------------------ redação
+  const { error: enqErr } = await supabase.rpc("enqueue_listening_session", {
+    p_session_id: sessionId,
+    p_audio_path: caminho,
+  })
+
+  if (enqErr) {
+    // O arquivo não pode sobreviver a uma sessão que não entrou na fila:
+    // ninguém viria apagá-lo depois.
+    await apagarAudio(caminho)
+    console.error("[escuta] enfileiramento:", enqErr)
+    const conflito = (enqErr as any)?.code === "23505"
+    return NextResponse.json(
+      { erro: conflito ? "Esta escuta já gerou prontuário." : "Não consegui enfileirar a escuta." },
+      { status: conflito ? 409 : 502 }
+    )
+  }
+
+  // 202: aceito, ainda não pronto. A tela passa a acompanhar por `status`.
+  return NextResponse.json({ sessionId, status: "queued" }, { status: 202 })
+}
+
+/**
+ * Grava o áudio no volume compartilhado com o worker.
+ *
+ * Nome derivado do id da sessão: o worker não precisa adivinhar, e uma
+ * retentativa sobrescreve em vez de acumular arquivo órfão.
+ */
+async function guardarAudio(sessionId: string, audio: Blob): Promise<string> {
+  const dir = process.env.ESCUTA_AUDIO_DIR ?? "/dados/escuta"
+  await mkdir(dir, { recursive: true })
+  const caminho = `${dir}/${sessionId}.webm`
+  await writeFile(caminho, Buffer.from(await audio.arrayBuffer()), { mode: 0o600 })
+  return caminho
+}
+
+async function apagarAudio(caminho: string) {
   try {
-    // A transcrição é gravada ANTES da redação. Se o modelo falhar depois, o
-    // médico ainda tem o texto da consulta — que é o que não dá para refazer.
-    await supabase.rpc("update_listening_session", {
-      p_session_id: sessionId,
-      p_status: "drafting",
-      p_transcript: transcricao,
-    })
-
-    const { content, modelo } = await redigirRascunho(transcricao, campos, {
-      paciente: appt?.cliente_nome ?? null,
-      servico: svc?.name ?? null,
-    })
-
-    const { data: registro, error: finErr } = await supabase
-      .rpc("finish_listening_session", {
-        p_session_id: sessionId,
-        p_content: content,
-        p_ai_model: modelo,
-      })
-      .single()
-
-    if (finErr) throw finErr
-
-    return NextResponse.json({ recordId: (registro as any).id })
-  } catch (err: any) {
-    const msg =
-      err instanceof RedacaoIndisponivel
-        ? err.message
-        : err?.code === "23505"
-          ? "Este atendimento já tem prontuário."
-          : "A redação do rascunho falhou."
-    console.error("[escuta] redação:", msg, err)
-    await marcarFalha(supabase, sessionId, msg)
-    // 409 quando o conflito é de estado — a tela oferece abrir o que já existe
-    // em vez de mandar tentar de novo, que nunca funcionaria.
-    return NextResponse.json({ erro: msg, transcricao }, { status: err?.code === "23505" ? 409 : 502 })
+    await unlink(caminho)
+  } catch {
+    // Já não estava lá: o objetivo era esse.
   }
 }
 

@@ -98,15 +98,36 @@ const sql = readFileSync(file, "utf8")
  * dependesse de plpgsql, ou seja: todo caso em que a asserção é "isto deveria
  * levantar exceção". 0022 é exatamente esse caso.
  *
- * Literais de aspas simples ficam de fora de propósito: nenhum .test.sql tem
- * ';' dentro de string, e reconhecer aspas exigiria tratar o escape '' junto.
+ * Literais de aspas simples TAMBÉM são respeitados. A versão anterior os
+ * deixava de fora dizendo que nenhum arquivo teria ';' dentro de string — o
+ * que valia para os .test.sql e deixou de valer no primeiro `comment on ... is
+ * '...; ...'` de uma migration: o statement era partido no meio da string e o
+ * banco recusava com "unterminated quoted string", apontando para um erro de
+ * sintaxe que não existia.
+ *
+ * O escape do SQL para aspas dentro de string é DOBRAR a aspa (''), não a
+ * barra invertida. Como '' é lido aqui como "fecha e reabre", o resultado é o
+ * mesmo e não precisa de caso especial.
  */
 function splitStatements(text) {
   const out = [];
   let buf = "";
   let dollarTag = null; // tag do dollar-quote aberto, ou null
+  let emAspas = false;  // dentro de literal '...'
 
   for (let i = 0; i < text.length; i++) {
+    if (emAspas) {
+      buf += text[i];
+      if (text[i] === "'") emAspas = false;
+      continue;
+    }
+
+    if (!dollarTag && text[i] === "'") {
+      emAspas = true;
+      buf += text[i];
+      continue;
+    }
+
     if (dollarTag) {
       if (text.startsWith(dollarTag, i)) {
         buf += dollarTag;

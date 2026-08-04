@@ -24,6 +24,10 @@ export function useEscutaModel() {
   const [disponivel, setDisponivel] = useState<boolean | null>(null)
   const [etapa, setEtapa] = useState<Etapa>("escolha")
   const [erro, setErro] = useState<string | null>(null)
+  // O que está acontecendo enquanto a etapa é "processando". Sem isto a tela
+  // mostra um spinner mudo por vários minutos, e um spinner mudo longo é
+  // indistinguível de travado — o médico recarrega a página achando que quebrou.
+  const [progresso, setProgresso] = useState<string>("Enviando a gravação…")
   const [segundos, setSegundos] = useState(0)
   const [nivel, setNivel] = useState(0)
 
@@ -186,18 +190,73 @@ export function useEscutaModel() {
 
       if (!resp.ok) throw new Error(json?.erro || "A escuta falhou.")
 
+      // 202 = aceito, ainda não pronto. Desde 0027 a transcrição roda no
+      // worker (leva ~2x o tempo da consulta), então o que volta aqui é só a
+      // confirmação de que o áudio chegou. O prontuário aparece depois.
+      const recordId = await aguardarProntuario(sessionId)
+
       // Vai direto para o rascunho em modo de leitura: o médico precisa LER o
       // que a IA escreveu antes de editar, não cair num formulário já aberto
       // que convida a assinar sem conferir.
-      router.push(`/pro/prontuario/${json.recordId}`)
+      router.push(`/pro/prontuario/${recordId}`)
     } catch (err: any) {
       console.error("[escuta] envio:", err)
       setErro(err?.message || "A escuta falhou.")
       setEtapa("erro")
     } finally {
-      // O áudio sai da memória aqui. Não há cópia em disco em lugar nenhum.
+      // O áudio sai da memória do navegador aqui. Uma cópia existe no servidor
+      // até o worker transcrever, e é ele quem a apaga (ver 0027).
       chunksRef.current = []
     }
+  }
+
+  /** Estado da fila em palavras que o médico entende. */
+  function rotuloDoStatus(status?: string | null): string {
+    if (status === "queued") return "Na fila para transcrever…"
+    if (status === "transcribing") return "Transcrevendo a consulta…"
+    if (status === "drafting") return "Redigindo o rascunho…"
+    return "Processando…"
+  }
+
+  /**
+   * Acompanha a sessão até virar prontuário.
+   *
+   * Consulta a própria linha — o RLS já garante que só a dela é visível. Não é
+   * realtime de propósito: um poll de 5s sobre uma tabela indexada é mais
+   * simples de operar que uma assinatura que precisa sobreviver a reconexão,
+   * e a espera aqui é de minutos, não de milissegundos.
+   *
+   * Fechar a aba não perde nada: o worker segue, e o prontuário aparece na
+   * lista quando terminar. É a diferença que o assíncrono comprou.
+   */
+  async function aguardarProntuario(id: string): Promise<string> {
+    const INTERVALO = 5000
+    // Teto generoso: transcrever uma consulta longa leva dezenas de minutos.
+    // Estourar aqui não cancela o trabalho — só para de olhar.
+    const LIMITE = 90
+
+    for (let i = 0; i < LIMITE; i++) {
+      const { data, error } = await supabase
+        .from("myia_listening_sessions")
+        .select("status, failure_reason, medical_record_id")
+        .eq("id", id)
+        .maybeSingle()
+
+      if (error) throw new Error("Perdi contato com o servidor.")
+
+      if (data?.status === "done" && data.medical_record_id) {
+        return data.medical_record_id as string
+      }
+      if (data?.status === "failed") {
+        throw new Error(data.failure_reason || "A escuta falhou.")
+      }
+      setProgresso(rotuloDoStatus(data?.status))
+      await new Promise((r) => setTimeout(r, INTERVALO))
+    }
+
+    throw new Error(
+      "A transcrição está demorando mais que o esperado. Ela continua rodando — o prontuário aparece na lista quando terminar."
+    )
   }
 
   function cancelar() {
@@ -218,6 +277,7 @@ export function useEscutaModel() {
     disponivel,
     etapa,
     erro,
+    progresso,
     segundos,
     nivel,
     atendimentos,

@@ -43,12 +43,29 @@ grant insert on t_falhas to authenticated;
 -- A ausência de coluna de áudio é decisão de produto (LGPD). Se alguém
 -- acrescentar uma, que seja com esta asserção falhando na cara — não em
 -- silêncio.
+--
+-- `audio_path` (0027) é a ÚNICA exceção, e é exceção de nome, não de natureza:
+-- guarda o CAMINHO de um arquivo temporário no volume do nosso servidor, que o
+-- worker apaga assim que transcreve. A guarda disparou nele quando foi criado,
+-- que é o comportamento certo — a exceção está escrita aqui, uma coluna por
+-- vez, em vez de afrouxar o padrão e deixar a próxima passar de graça.
+--
+-- A asserção logo abaixo é o que impede a exceção de virar brecha: se alguém
+-- transformar `audio_path` em `bytea`, o áudio estaria no banco e o teste
+-- falha.
 insert into t_falhas
 select 'myia_listening_sessions ganhou coluna de áudio: ' || column_name
   from information_schema.columns
  where table_name = 'myia_listening_sessions'
    and (column_name ~* 'audio|recording_url|blob|media')
-   and column_name !~* 'status';
+   and column_name !~* 'status'
+   and column_name <> 'audio_path';
+
+insert into t_falhas
+select 'audio_path deixou de ser texto (áudio no banco?): ' || data_type
+  from information_schema.columns
+ where table_name = 'myia_listening_sessions'
+   and column_name = 'audio_path' and data_type <> 'text';
 
 -- Consentimento é NOT NULL — a garantia mora no schema.
 insert into t_falhas

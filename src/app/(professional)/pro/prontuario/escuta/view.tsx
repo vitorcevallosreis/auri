@@ -103,11 +103,20 @@ export function EscutaView(m: IEscutaModel) {
         {m.etapa === "processando" ? (
           <section className="flex flex-col items-center rounded-2xl border bg-card px-6 py-16 text-center">
             <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
-            <p className="mt-6 text-lg font-medium">Transcrevendo e redigindo</p>
-            <p className="mt-2 max-w-[46ch] text-sm text-muted-foreground">
-              Isto leva um instante para consultas longas. Não feche esta aba —
-              o áudio está só na memória deste navegador e não foi salvo em
-              lugar nenhum.
+            <p className="mt-6 text-lg font-medium">{m.progresso}</p>
+            {/* O texto anterior dizia "não feche esta aba — o áudio está só na
+                memória deste navegador". As duas afirmações deixaram de ser
+                verdade com o assíncrono (0027), e esta é a tela em que o
+                paciente consentiu: ela não pode descrever errado o que é feito
+                com a gravação dele. */}
+            <p className="mt-2 max-w-[48ch] text-sm text-muted-foreground">
+              Transcrever leva cerca do dobro da duração da consulta. Você pode
+              fechar esta aba — o prontuário aparece na sua lista quando ficar
+              pronto.
+            </p>
+            <p className="mt-3 max-w-[48ch] text-xs text-muted-foreground">
+              A gravação fica no servidor da clínica só até ser transcrita, e é
+              apagada em seguida. O áudio não é armazenado.
             </p>
           </section>
         ) : gravando ? (

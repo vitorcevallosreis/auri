@@ -3,6 +3,12 @@ import { hostname } from "node:os"
 import { randomUUID } from "node:crypto"
 import { claimJobs, finishJob, reapStaleJobs, type AgentJob } from "./queue.mts"
 import { processAgentTurn } from "./agentTurn.mts"
+import {
+  claimSessoes,
+  processarEscuta,
+  reapSessoes,
+  varrerAudioOrfao,
+} from "./escuta.mts"
 
 /**
  * auri-agent-worker — Plano 3, P3.2.
@@ -33,9 +39,21 @@ const REAP_EVERY_MS = Number(process.env.WORKER_REAP_INTERVAL_MS ?? 60_000)
 // turno existir de verdade.
 const TURN_ENABLED = process.env.AGENT_TURN_ENABLED === "true"
 
+// Escuta (0027). Ligada por padrão, ao contrário do turno do agente: aqui não
+// há risco de consumir fila sem responder — sem transcritor configurado o
+// médico nem consegue gravar, porque a tela consulta o portão antes.
+const ESCUTA_ENABLED = process.env.ESCUTA_WORKER_ENABLED !== "false"
+const ESCUTA_BATCH = Number(process.env.ESCUTA_CLAIM_BATCH ?? 1)
+// 30 min: transcrever 15 minutos de consulta leva ~30 neste VPS. Teto curto
+// reviveria sessão que está apenas demorando, e duas transcrições da mesma
+// consulta é pior que uma lenta.
+const ESCUTA_REAP_TIMEOUT_S = Number(process.env.ESCUTA_REAP_TIMEOUT_SECONDS ?? 1800)
+
 let running = true
 let inFlight = 0
 let lastReapAt = 0
+let escutaEmCurso = 0
+let lastEscutaReapAt = 0
 
 // ---------------------------------------------------------------------------
 // Loop
@@ -81,6 +99,60 @@ async function tick(): Promise<void> {
   inFlight -= jobs.length
 }
 
+/**
+ * Escuta do prontuário (0027) — fila própria, no mesmo processo.
+ *
+ * Fila separada da do agente de propósito: os dois trabalhos têm nada a ver um
+ * com o outro e perfis opostos. Um turno do agente leva segundos e é
+ * conversacional; uma transcrição leva DEZENAS DE MINUTOS e é CPU pura. Num
+ * lote comum, uma consulta longa seguraria as respostas de WhatsApp atrás dela.
+ *
+ * Por isso `ESCUTA_CLAIM_BATCH` é 1 por padrão: duas transcrições ao mesmo
+ * tempo neste VPS (4 vCPU, sem GPU) só fazem as duas demorarem o dobro, e o
+ * Whisper é um container só.
+ */
+async function tickEscuta(): Promise<void> {
+  const now = Date.now()
+
+  if (now - lastEscutaReapAt >= REAP_EVERY_MS) {
+    lastEscutaReapAt = now
+    try {
+      const devolvidas = await reapSessoes(ESCUTA_REAP_TIMEOUT_S)
+      if (devolvidas > 0) {
+        console.warn(`[escuta] reaper devolveu ${devolvidas} sessão(ões) à fila`)
+      }
+      const orfaos = await varrerAudioOrfao()
+      if (orfaos > 0) {
+        console.warn(`[escuta] varredura apagou ${orfaos} áudio(s) órfão(s)`)
+      }
+    } catch (err) {
+      console.error("[escuta] manutenção falhou:", err)
+    }
+  }
+
+  if (escutaEmCurso > 0) return
+
+  let sessoes: Awaited<ReturnType<typeof claimSessoes>>
+  try {
+    sessoes = await claimSessoes(WORKER_ID, ESCUTA_BATCH)
+  } catch (err) {
+    console.error("[escuta] claim falhou:", err)
+    return
+  }
+  if (sessoes.length === 0) return
+
+  escutaEmCurso += sessoes.length
+  try {
+    for (const s of sessoes) {
+      const t0 = Date.now()
+      await processarEscuta(s)
+      console.log(`[escuta] sessão ${s.id} em ${Math.round((Date.now() - t0) / 1000)}s`)
+    }
+  } finally {
+    escutaEmCurso -= sessoes.length
+  }
+}
+
 async function runJob(job: AgentJob): Promise<void> {
   const startedAt = Date.now()
 
@@ -112,6 +184,9 @@ async function main(): Promise<void> {
   console.log(
     `[worker] poll=${POLL_INTERVAL_MS}ms batch=${CLAIM_BATCH} reap=${REAP_TIMEOUT_S}s turno=${TURN_ENABLED ? "ATIVO" : "DESATIVADO"}`,
   )
+  console.log(
+    `[escuta] ${ESCUTA_ENABLED ? "ATIVA" : "DESATIVADA"} batch=${ESCUTA_BATCH} reap=${ESCUTA_REAP_TIMEOUT_S}s`,
+  )
 
   if (!TURN_ENABLED) {
     // Loga alto: um worker rodando com o turno desativado consome fila sem
@@ -130,6 +205,17 @@ async function main(): Promise<void> {
         // Ainda roda o reaper: jobs presos de uma execução anterior precisam
         // voltar à fila mesmo com o turno desligado.
         await reapStaleJobs(REAP_TIMEOUT_S)
+      }
+
+      // Fila separada e independente: um turno do agente com defeito não pode
+      // impedir a transcrição de uma consulta, nem o contrário. Por isso o
+      // `try` de cada uma é próprio, e não um só em volta das duas.
+      if (ESCUTA_ENABLED) {
+        try {
+          await tickEscuta()
+        } catch (error) {
+          console.error("[escuta] erro no ciclo:", error)
+        }
       }
     } catch (error) {
       // Erro no loop (rede, banco fora) não pode matar o worker — o container

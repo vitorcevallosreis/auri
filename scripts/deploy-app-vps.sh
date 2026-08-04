@@ -49,9 +49,15 @@ WORKER_CONTAINER_NAME="${WORKER_CONTAINER_NAME:-auri-agent-worker}"
 # um deploy só do painel).
 DEPLOY_WORKER="${DEPLOY_WORKER:-1}"
 
+# Volume do áudio em trânsito (0027), montado no app E no worker. O caminho
+# precisa ser o MESMO nos dois: o app grava `ESCUTA_AUDIO_DIR/<sessao>.webm` e
+# é esse caminho literal que vai para o banco, para o worker ler depois.
+ESCUTA_AUDIO_VOLUME="${ESCUTA_AUDIO_VOLUME:-auri-escuta-audio}"
+ESCUTA_AUDIO_DIR="${ESCUTA_AUDIO_DIR:-/dados/escuta}"
+
 # Whisper da escuta. Sobe junto por padrão, mas é PULADO sozinho quando
 # TRANSCRICAO_API_KEY não está no env file — instalação que não usa escuta não
-# carrega 827 MB de imagem nem 1,5 GB de RAM à toa.
+# carrega 827 MB de imagem nem 2 GB de RAM à toa.
 DEPLOY_WHISPER="${DEPLOY_WHISPER:-1}"
 WHISPER_IMAGE="${WHISPER_IMAGE:-hwdsl2/whisper-server}"
 WHISPER_CONTAINER_NAME="${WHISPER_CONTAINER_NAME:-auri-whisper}"
@@ -129,6 +135,12 @@ RUNTIME_KEYS=(
   ESCUTA_API_KEY
   ESCUTA_MODEL
   ESCUTA_MAX_TOKENS
+  # Caminho do volume compartilhado. Vai para os dois containers porque o app
+  # escreve e o worker le — se divergirem, o worker procura onde nao ha nada.
+  ESCUTA_AUDIO_DIR
+  ESCUTA_WORKER_ENABLED
+  ESCUTA_CLAIM_BATCH
+  ESCUTA_REAP_TIMEOUT_SECONDS
   # A SECRET da Memed é server-only e não pode virar NEXT_PUBLIC_ nunca.
   MEMED_API_KEY
   MEMED_SECRET_KEY
@@ -254,11 +266,15 @@ log "Parando/removendo container antigo (se existir)"
 ssh "${VPS_HOST}" "docker rm -f '${CONTAINER_NAME}' >/dev/null 2>&1 || true"
 
 log "Subindo ${CONTAINER_NAME} em ${HOST_PORT} na rede ${DOCKER_NETWORK}"
+# O volume de áudio é COMPARTILHADO com o worker: o app escreve a gravação,
+# o worker lê, transcreve e apaga. É o único ponto em que o áudio toca o
+# disco, e ele fica no nosso servidor — ver o cabeçalho de 0027.
 ssh "${VPS_HOST}" "docker run -d \
   --name '${CONTAINER_NAME}' \
   --restart always \
   --network '${DOCKER_NETWORK}' \
   -p '${HOST_PORT}:3000' \
+  -v '${ESCUTA_AUDIO_VOLUME}:${ESCUTA_AUDIO_DIR}' \
   --env-file '${APP_DIR}/.env.runtime' \
   '${IMAGE_TAG}'"
 
@@ -285,6 +301,7 @@ if [[ "${DEPLOY_WORKER}" == "1" ]]; then
     --name '${WORKER_CONTAINER_NAME}' \
     --restart always \
     --network '${DOCKER_NETWORK}' \
+    -v '${ESCUTA_AUDIO_VOLUME}:${ESCUTA_AUDIO_DIR}' \
     --env-file '${APP_DIR}/.env.runtime' \
     '${WORKER_IMAGE_TAG}'"
 
