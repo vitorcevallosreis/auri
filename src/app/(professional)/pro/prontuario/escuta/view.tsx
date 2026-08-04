@@ -30,6 +30,9 @@ import {
   CalendarDays,
   Clock3,
   AlertTriangle,
+  RefreshCw,
+  FileText,
+  Copy,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { IEscutaModel } from "./model"
@@ -190,6 +193,105 @@ export function EscutaView(m: IEscutaModel) {
         ) : (
           /* ----------------------------------------------------------- escolha */
           <>
+            {/* ------------------------------------------- escutas que falharam
+                Vem ANTES da escolha do próximo atendimento de propósito: uma
+                consulta já conduzida cuja transcrição está parada aqui é mais
+                urgente que a próxima que ainda vai ser gravada. Até 0028 esta
+                seção não existia e o texto ficava salvo e inalcançável. */}
+            {m.escutasFalhadas.length > 0 && (
+              <section className="rounded-2xl border border-amber-300 bg-amber-50 p-6 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="h-4 w-4" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base font-semibold leading-tight">
+                      Escutas que não viraram prontuário
+                    </h2>
+                    <p className="mt-1 max-w-[62ch] text-sm text-muted-foreground">
+                      A transcrição destas consultas foi salva antes da falha. O
+                      áudio não existe mais — mas o texto sim, e a partir dele dá
+                      para redigir de novo.
+                    </p>
+
+                    <ul className="mt-4 space-y-3">
+                      {m.escutasFalhadas.map((e) => (
+                        <li key={e.id} className="rounded-xl border bg-card p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{e.paciente}</p>
+                              <p className="truncate text-sm text-muted-foreground">
+                                {e.servico ?? "Atendimento"}
+                                {e.data && ` · ${dataCurta(e.data)}`}
+                              </p>
+                              {e.motivo && (
+                                <p className="mt-1 text-sm text-destructive">{e.motivo}</p>
+                              )}
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-2">
+                              {e.jaTemProntuario ? (
+                                <span className="text-sm text-muted-foreground">
+                                  Já tem prontuário
+                                </span>
+                              ) : e.recuperavel ? (
+                                <Button size="sm" onClick={() => m.recuperar(e.id)}>
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Redigir de novo
+                                </Button>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">
+                                  Sem transcrição
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* A transcrição fica atrás de um clique, não escondida:
+                              é dado clínico sensível numa tela que pode estar
+                              aberta na frente do próximo paciente. */}
+                          {e.transcricao ? (
+                            <details className="mt-3 group">
+                              <summary className="cursor-pointer list-none text-sm font-medium text-muted-foreground hover:text-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <FileText className="h-3.5 w-3.5" aria-hidden />
+                                  Ver a transcrição
+                                </span>
+                              </summary>
+                              <p className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/60 p-3 text-sm leading-relaxed">
+                                {e.transcricao}
+                              </p>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() =>
+                                  navigator.clipboard?.writeText(e.transcricao ?? "")
+                                }
+                              >
+                                <Copy className="mr-2 h-3.5 w-3.5" />
+                                Copiar
+                              </Button>
+                            </details>
+                          ) : (
+                            /* Sem texto não há recuperação: o áudio é apagado
+                               assim que a transcrição termina, e esta falhou
+                               antes disso. Dizer, em vez de deixar a pessoa
+                               procurar um botão que não existe. */
+                            <p className="mt-3 text-sm text-muted-foreground">
+                              Esta escuta falhou antes de transcrever, e a gravação
+                              já foi apagada. A consulta precisa ser registrada à
+                              mão.
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            )}
+
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 1. Atendimento

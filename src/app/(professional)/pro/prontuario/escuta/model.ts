@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/config"
 import { authedFetch } from "@/lib/api/authedFetch"
 import { useRecordTemplates } from "@/hooks/useMedicalRecords"
 import { useAtendimentosSemProntuario } from "@/hooks/useMedicalRecordWrite"
+import { useEscutasFalhadas } from "@/hooks/useEscutasFalhadas"
 import { useProfessionalIdentity } from "@/hooks/useProfessionalIdentity"
 
 export type Etapa =
@@ -20,6 +21,12 @@ export function useEscutaModel() {
   const { atendimentos, loading: loadingAppts } = useAtendimentosSemProntuario()
   const { templates } = useRecordTemplates()
   const { identity } = useProfessionalIdentity()
+  const {
+    escutas: escutasFalhadas,
+    loading: loadingFalhadas,
+    recarregar: recarregarFalhadas,
+    redigirDeNovo,
+  } = useEscutasFalhadas()
 
   const [disponivel, setDisponivel] = useState<boolean | null>(null)
   const [etapa, setEtapa] = useState<Etapa>("escolha")
@@ -203,10 +210,47 @@ export function useEscutaModel() {
       console.error("[escuta] envio:", err)
       setErro(err?.message || "A escuta falhou.")
       setEtapa("erro")
+      // Traz a sessão recém-falhada para a lista de recuperação, na mesma tela
+      // em que o médico acabou de ver o erro. Sem isto ele leria "falhou" sem
+      // nenhum caminho à vista, e a transcrição — que provavelmente está salva —
+      // só apareceria numa próxima visita à página.
+      recarregarFalhadas()
     } finally {
       // O áudio sai da memória do navegador aqui. Uma cópia existe no servidor
       // até o worker transcrever, e é ele quem a apaga (ver 0027).
       chunksRef.current = []
+    }
+  }
+
+  /**
+   * Recupera uma escuta que falhou: manda redigir de novo a partir da
+   * transcrição já salva (0028).
+   *
+   * Reaproveita `aguardarProntuario` de propósito — para o médico é o mesmo
+   * fim de linha (o rascunho abre para revisão), e uma segunda espera com
+   * regras próprias divergiria da primeira no primeiro ajuste.
+   *
+   * Não há áudio nem microfone aqui: o arquivo foi apagado assim que a
+   * transcrição ficou pronta, e é dela que a redação parte.
+   */
+  async function recuperar(id: string) {
+    setErro(null)
+    setProgresso("Redigindo o rascunho…")
+    setEtapa("processando")
+
+    const r = await redigirDeNovo(id)
+    if (!r.ok) {
+      setErro(r.message || "Não consegui reenviar esta escuta.")
+      setEtapa("erro")
+      return
+    }
+
+    try {
+      const recordId = await aguardarProntuario(id)
+      router.push(`/pro/prontuario/${recordId}`)
+    } catch (err: any) {
+      setErro(err?.message || "A redação falhou de novo.")
+      setEtapa("erro")
     }
   }
 
@@ -287,7 +331,9 @@ export function useEscutaModel() {
     atendimentoId, setAtendimentoId,
     templateId: templateEfetivo, setTemplateId,
     consentimento, setConsentimento,
-    iniciar, pausar, retomar, encerrar, cancelar,
+    escutasFalhadas,
+    loadingFalhadas,
+    iniciar, pausar, retomar, encerrar, cancelar, recuperar,
     voltarParaEscolha: () => setEtapa("escolha"),
   }
 }

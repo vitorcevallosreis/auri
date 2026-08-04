@@ -26,6 +26,9 @@ const IDIOMA = process.env.ESCUTA_IDIOMA ?? "pt"
 export interface SessaoEscuta {
   id: string
   audio_path: string | null
+  /** Já preenchida quando o trabalho é uma REDAÇÃO NOVA a partir do texto
+   *  salvo (0028) — nesse caso não há áudio e não há o que transcrever. */
+  transcript: string | null
   template_id: string | null
   appointment_id: string | null
   attempts: number
@@ -98,44 +101,67 @@ async function marcar(
 }
 
 /**
- * Transcreve e redige uma sessão.
+ * Transcreve (se houver áudio) e redige uma sessão.
  *
  * ORDEM QUE IMPORTA: a transcrição é gravada no banco ANTES de o modelo
  * redigir. Se a redação falhar, o médico ainda tem o texto da consulta — que é
  * o que não dá para refazer. O rascunho, sim, dá.
+ *
+ * DOIS TIPOS DE TRABALHO chegam aqui, distinguidos por `audio_path`:
+ *
+ *   com áudio  — gravação recém-entregue: transcrever e depois redigir.
+ *   sem áudio  — REDAÇÃO NOVA a partir da transcrição já salva (0028). É o
+ *                médico pedindo de novo depois de uma falha; o arquivo não
+ *                existe mais e não há como recriá-lo.
+ *
+ * A distinção é a mesma que `claim_listening_sessions` usa para escolher entre
+ * `transcribing` e `drafting` — se ela mudar aqui, tem que mudar lá.
  */
 export async function processarEscuta(s: SessaoEscuta): Promise<void> {
-  if (!s.audio_path) {
+  const salva = (s.transcript ?? "").trim()
+
+  if (!s.audio_path && !salva) {
     await marcar(s.id, "failed", null, "A gravação não chegou ao servidor.")
     return
   }
 
   // Os adaptadores são do app (TypeScript com alias `@/`), que este worker não
   // resolve. Importados por caminho relativo — é o preço de rodar sem build.
-  const { getTranscritor, TranscricaoIndisponivel } = await import(
-    "../src/lib/escuta/transcricao.ts"
-  )
   const { redigirRascunho, RedacaoIndisponivel } = await import("../src/lib/escuta/redacao.ts")
 
   let transcricao: string
-  try {
-    const bytes = await readFile(s.audio_path)
-    const blob = new Blob([bytes], { type: "audio/webm" })
-    const r = await getTranscritor().transcrever(blob, { idioma: IDIOMA })
-    transcricao = r.texto
-  } catch (err: any) {
-    const msg =
-      err instanceof TranscricaoIndisponivel ? err.message : "A transcrição falhou."
-    console.error(`[escuta] transcrição de ${s.id}:`, msg)
-    await marcar(s.id, "failed", null, msg)
-    await descartar(s.audio_path)
-    return
-  }
 
-  // O áudio já cumpriu seu papel. Sai do disco aqui, antes da redação, para
-  // não depender de o que vem a seguir dar certo.
-  await descartar(s.audio_path)
-  await marcar(s.id, "drafting", transcricao, null)
+  if (s.audio_path) {
+    // Importado só neste ramo: numa redação nova a transcrição pode nem estar
+    // configurada, e `getTranscritor()` lançaria por algo que não é preciso.
+    const { getTranscritor, TranscricaoIndisponivel } = await import(
+      "../src/lib/escuta/transcricao.ts"
+    )
+    try {
+      const bytes = await readFile(s.audio_path)
+      const blob = new Blob([bytes], { type: "audio/webm" })
+      const r = await getTranscritor().transcrever(blob, { idioma: IDIOMA })
+      transcricao = r.texto
+    } catch (err: any) {
+      const msg =
+        err instanceof TranscricaoIndisponivel ? err.message : "A transcrição falhou."
+      console.error(`[escuta] transcrição de ${s.id}:`, msg)
+      await marcar(s.id, "failed", null, msg)
+      await descartar(s.audio_path)
+      return
+    }
+
+    // O áudio já cumpriu seu papel. Sai do disco aqui, antes da redação, para
+    // não depender de o que vem a seguir dar certo.
+    await descartar(s.audio_path)
+    await marcar(s.id, "drafting", transcricao, null)
+  } else {
+    transcricao = salva
+    console.log(`[escuta] ${s.id}: redigindo de novo a partir da transcrição salva`)
+    // O claim já pôs em `drafting`; não há transcrição nova para gravar. Uma
+    // chamada a `marcar` aqui só reescreveria o mesmo texto por cima do que é
+    // a fonte de auditoria do rascunho.
+  }
 
   // Contexto do rascunho: nome do paciente e serviço. Lido com a chave de
   // serviço porque o worker não tem sessão de médico — o escopo vem da própria

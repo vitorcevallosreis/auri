@@ -186,12 +186,44 @@ Coisas que custaram tempo e não são óbvias no código.
    header só é enviado quando há chave — servidor em rede interna pode não
    pedir nenhuma.
 
-6. **Transcrição salva não é recuperável pela tela.** Se a redação falhar,
-   `route.ts` devolve `{ erro, transcricao }` e o texto fica no banco, mas
-   `model.ts` lê só `json.erro` e descarta. Não há tela para sessões `failed`
-   nem botão de "redigir de novo a partir da transcrição". **É a maior lacuna
-   aberta** — o médico perde acesso à transcrição de uma consulta que não dá
-   para repetir.
+6. ~~**Transcrição salva não é recuperável pela tela.**~~ **FECHADO em 0028.**
+
+   Era a maior lacuna aberta: o worker gravava a transcrição antes de redigir
+   (justamente para que a falha não levasse o texto embora), e nada devolvia
+   esse texto ao médico. A consulta — a única coisa irrepetível do sistema —
+   ficava salva e inalcançável.
+
+   O que existe agora:
+
+   - `requeue_listening_draft()` (0028) devolve à fila uma sessão `failed`,
+     para o modelo redigir de novo **a partir da transcrição já salva**. Não há
+     áudio: 0027 o apaga assim que transcreve, e não há volta.
+   - `claim_listening_sessions()` reivindica para `drafting`, não
+     `transcribing`, quando `audio_path is null` — a tela não pode anunciar uma
+     transcrição que não vai acontecer.
+   - `processarEscuta()` (worker) trata os dois tipos de trabalho pelo mesmo
+     discriminante: com áudio, transcreve e redige; sem áudio, só redige.
+   - A tela `/pro/prontuario/escuta` lista as escutas que falharam **acima** da
+     escolha do próximo atendimento, com o motivo, a transcrição atrás de um
+     clique (dado clínico numa tela que pode estar aberta na frente do próximo
+     paciente), botão de copiar e "Redigir de novo".
+
+   **O que continua NÃO sendo possível: editar a transcrição.** Não há policy
+   de UPDATE para o profissional (0025) e 0028 não criou nenhuma. A transcrição
+   é a fonte contra a qual o rascunho se audita; uma fonte que o autor do
+   rascunho pode reescrever não audita nada. Ler e copiar, sim.
+
+   **Retentativa é humana, nunca automática.** `processarEscuta` continua
+   marcando `failed` em vez de devolver à fila sozinho: repetir a mesma redação
+   sem nada ter mudado só gasta o mesmo erro três vezes. Quem clica é alguém
+   que pode ter corrigido o modelo, a chave ou o teto de tokens no meio — e
+   `attempts` volta a zero por isso.
+
+   **Sobra um caso sem saída:** falha ANTES de transcrever (Whisper fora do ar,
+   áudio mudo). Aí não há texto e o arquivo já foi apagado — a tela diz isso e
+   manda registrar à mão. Não há desenho que recupere áudio que não existe;
+   quem quiser fechar esse caso teria que reter a gravação até o prontuário
+   nascer, que é exatamente a troca de LGPD que 0027 recusou.
 
 7. **`consent_method` está fixo em `'verbal'`** no front. A coluna aceita
    `'written'` e `consent_note` nunca é preenchida.
