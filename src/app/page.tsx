@@ -1,7 +1,6 @@
 'use client';
 
 import { DashboardLayout } from "@/app/layout/dashboard-layout"
-import { ThemeProvider } from "@/components/theme-provider"
 import {
   Stethoscope,
   Clock,
@@ -52,13 +51,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const volumeSeries = appointments.monthly;
   const hourSeries = appointments.hourly;
 
+  // NÃO envolver esta página num ThemeProvider próprio. O layout raiz já provê
+  // um (storageKey "myia-ai-theme"). Um segundo aqui, com storageKey
+  // "dashboard-theme", criava DOIS donos da mesma classe em <html>: o botão
+  // "Tema" da barra lateral mexia no de fora, e o `useTheme()` dos gráficos
+  // lia o de dentro — que continuava dizendo "light". O gráfico ficava sempre
+  // um tema atrasado e, no escuro, pintava a linha com a cor do claro
+  // (#11282C sobre card #11282C: invisível).
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      enableSystem={false}
-      storageKey="dashboard-theme"
-    >
       <DashboardLayout>
         <div className="space-y-6 pb-8">
           <div className="flex items-center justify-between">
@@ -205,6 +205,5 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </DashboardLayout>
-    </ThemeProvider>
   );
 }
