@@ -25,7 +25,9 @@ if (existsSync(".env.local")) {
 }
 
 const { supabaseServer } = await import("../worker/supabase.mts")
-const { buildReadTools } = await import("../worker/tools.mts")
+const { buildReadTools, buildWriteTools, buildEscalationTools } = await import(
+  "../worker/tools.mts"
+)
 
 const A = {
   company: randomUUID(),
@@ -137,7 +139,7 @@ async function cleanup() {
 }
 
 /** Roda a tool pelo nome e devolve o JSON já parseado. */
-async function call(tools: ReturnType<typeof buildReadTools>, name: string, args: unknown) {
+async function call(tools: any[], name: string, args: unknown) {
   const tool = tools.find((t: any) => t.name === name)
   if (!tool) throw new Error(`tool ${name} não existe`)
   return JSON.parse(await (tool as any).run(args))
@@ -291,6 +293,195 @@ try {
     data_fim: nextDateForWeekday(TARGET_WEEKDAY === 7 ? 1 : TARGET_WEEKDAY + 1),
   })
   check(semRegra.horarios?.length === 0, "dia sem regra não gera slot")
+
+  // ===========================================================================
+  // ESCRITA (P3.4) — a partir daqui o agente mexe na agenda de verdade.
+  // ===========================================================================
+  const escrita = buildWriteTools({
+    companyId: A.company,
+    chatId: A.chat,
+    record: async () => {},
+  })
+
+  console.log("\n# agendar: o caminho feliz")
+
+  const marcado = await call(escrita, "agendar_consulta", {
+    service_id: A.service,
+    professional_id: A.prof,
+    data: TARGET_DATE,
+    horario: "10:00",
+  })
+  check(marcado.agendado === true, `10:00 foi marcado (${JSON.stringify(marcado).slice(0, 80)})`)
+  check(marcado.duracao_minutos === 30, "duração veio do serviço, não do parâmetro")
+
+  // O agendamento tem de sair do dono do CHAT, nunca de um parâmetro.
+  const { data: criado } = await supabaseServer
+    .from("myia_appointments")
+    .select("client_id, cliente_telefone, end_time, status")
+    .eq("id", marcado.id)
+    .single()
+  check(criado?.client_id === A.contact, "client_id é o dono do chat")
+  check(String(criado?.end_time).startsWith("10:30"), "fim calculado a partir da duração")
+
+  const sumiu = await call(tools, "consultar_disponibilidade", {
+    service_id: A.service,
+    data_inicio: TARGET_DATE,
+    data_fim: TARGET_DATE,
+  })
+  check(
+    !sumiu.horarios?.some((h: any) => h.horario === "10:00"),
+    "o horário marcado sai da disponibilidade",
+  )
+
+  console.log("\n# agendar: o que tem de ser recusado")
+
+  // O gatilho de 0029. É a garantia que impede duas pessoas na mesma cadeira.
+  const colisao = await call(escrita, "agendar_consulta", {
+    service_id: A.service,
+    professional_id: A.prof,
+    data: TARGET_DATE,
+    horario: "10:00",
+  })
+  // Não basta recusar: o motivo tem de chegar ao modelo em palavras que ele
+  // possa repetir ao paciente. Um "duplicate key violates constraint" vazando
+  // para o WhatsApp é tão ruim quanto marcar duas vezes.
+  check(
+    typeof colisao.erro === "string" && /ocupado/i.test(colisao.detalhe ?? ""),
+    `horário já ocupado é recusado com motivo legível (gatilho 0029) — veio: ${colisao.detalhe}`,
+  )
+
+  const foraDoExpediente = await call(escrita, "agendar_consulta", {
+    service_id: A.service,
+    professional_id: A.prof,
+    data: TARGET_DATE,
+    horario: "14:00", // a agenda é 09:00–11:00
+  })
+  check(typeof foraDoExpediente.erro === "string", "horário fora da janela é recusado")
+
+  const passado = await call(escrita, "agendar_consulta", {
+    service_id: A.service,
+    professional_id: A.prof,
+    data: "2020-01-01",
+    horario: "09:00",
+  })
+  check(typeof passado.erro === "string", "data no passado é recusada")
+
+  const servicoDeB = await call(escrita, "agendar_consulta", {
+    service_id: B.service,
+    professional_id: A.prof,
+    data: TARGET_DATE,
+    horario: "09:00",
+  })
+  check(typeof servicoDeB.erro === "string", "service_id de outra clínica é recusado")
+
+  const profDeB = await call(escrita, "agendar_consulta", {
+    service_id: A.service,
+    professional_id: B.prof,
+    data: TARGET_DATE,
+    horario: "09:00",
+  })
+  check(typeof profDeB.erro === "string", "professional_id de outra clínica é recusado")
+
+  console.log("\n# remarcar e cancelar: só a consulta do dono do chat")
+
+  // Consulta pertencente ao paciente da OUTRA clínica. É o alvo que um id
+  // vazado ou alucinado teria — e o que não pode ser tocado.
+  const { data: alheia } = await supabaseServer
+    .from("myia_appointments")
+    .insert({
+      company_id: B.company,
+      professional_id: B.prof,
+      service_id: B.service,
+      client_id: B.contact,
+      appointment_date: TARGET_DATE,
+      start_time: "09:00:00",
+      end_time: "09:30:00",
+      status: "scheduled",
+    })
+    .select("id")
+    .single()
+
+  const remarcarAlheia = await call(escrita, "remarcar_consulta", {
+    appointment_id: alheia!.id,
+    data: TARGET_DATE,
+    horario: "09:30",
+  })
+  check(typeof remarcarAlheia.erro === "string", "remarcar consulta de outro paciente é recusado")
+
+  const cancelarAlheia = await call(escrita, "cancelar_consulta", {
+    appointment_id: alheia!.id,
+  })
+  check(typeof cancelarAlheia.erro === "string", "cancelar consulta de outro paciente é recusado")
+
+  const { data: intacta } = await supabaseServer
+    .from("myia_appointments")
+    .select("status, start_time")
+    .eq("id", alheia!.id)
+    .single()
+  check(
+    intacta?.status === "scheduled" && String(intacta.start_time).startsWith("09:00"),
+    "a consulta alheia continua intacta",
+  )
+
+  const remarcado = await call(escrita, "remarcar_consulta", {
+    appointment_id: marcado.id,
+    data: TARGET_DATE,
+    horario: "09:00",
+  })
+  check(remarcado.remarcado === true, `remarcar 10:00 -> 09:00 (${JSON.stringify(remarcado).slice(0, 80)})`)
+
+  const voltou = await call(tools, "consultar_disponibilidade", {
+    service_id: A.service,
+    data_inicio: TARGET_DATE,
+    data_fim: TARGET_DATE,
+  })
+  check(
+    voltou.horarios?.some((h: any) => h.horario === "10:00") &&
+      !voltou.horarios?.some((h: any) => h.horario === "09:00"),
+    "remarcar devolve o horário antigo e ocupa o novo",
+  )
+
+  const cancelado2 = await call(escrita, "cancelar_consulta", {
+    appointment_id: marcado.id,
+    motivo: "imprevisto",
+  })
+  check(cancelado2.cancelado === true, "cancelar a própria consulta funciona")
+
+  const livre = await call(tools, "consultar_disponibilidade", {
+    service_id: A.service,
+    data_inicio: TARGET_DATE,
+    data_fim: TARGET_DATE,
+  })
+  check(livre.horarios?.length === 4, `cancelamento devolve todos os slots (${livre.horarios?.length})`)
+
+  console.log("\n# escalonamento (P3.5)")
+
+  const escalonamento = buildEscalationTools({
+    companyId: A.company,
+    chatId: A.chat,
+    record: async () => {},
+  })
+
+  const transferido = await call(escalonamento, "transferir_para_humano", {
+    motivo: "paciente pediu para falar com alguém",
+    urgente: false,
+  })
+  check(transferido.transferido === true, "transferir_para_humano responde ok")
+
+  const { data: chatPausado } = await supabaseServer
+    .from("myia_chat")
+    .select("chat_pause")
+    .eq("id", A.chat)
+    .single()
+  check(chatPausado?.chat_pause === true, "chat_pause ligado — o worker para de responder")
+
+  const escalonamentoB = buildEscalationTools({
+    companyId: A.company,
+    chatId: B.chat,
+    record: async () => {},
+  })
+  const transferirB = await call(escalonamentoB, "transferir_para_humano", { motivo: "x" })
+  check(typeof transferirB.erro === "string", "não dá para pausar chat de outra clínica")
 } finally {
   console.log("\n# limpeza")
   await cleanup()

@@ -2,7 +2,12 @@ import Anthropic from "@anthropic-ai/sdk"
 import { supabaseServer } from "./supabase.mts"
 import type { AgentJob } from "./queue.mts"
 import { buildSystemPrompt, loadPromptContext } from "./prompt.mts"
-import { buildReadTools, type ToolContext } from "./tools.mts"
+import {
+  buildReadTools,
+  buildWriteTools,
+  buildEscalationTools,
+  type ToolContext,
+} from "./tools.mts"
 import { sendTextToChat } from "./send.mts"
 
 /**
@@ -14,9 +19,14 @@ import { sendTextToChat } from "./send.mts"
  * certa aqui, e não Managed Agents (container por sessão) nem Agent SDK
  * (agente de codebase).
  *
- * Nesta fase o agente só LÊ (consulta serviços, profissionais, convênios,
- * disponibilidade). Agendar de fato é o P3.4 — até lá ele deve informar e, se
- * o paciente quiser fechar, transferir para um humano.
+ * O agente lê (serviços, profissionais, convênios, disponibilidade), ESCREVE
+ * na agenda (marcar, remarcar, cancelar — P3.4) e sabe se retirar da conversa
+ * (`transferir_para_humano` — P3.5).
+ *
+ * A escrita não é solta: o gatilho de capacidade da migration 0029 é quem
+ * garante, dentro da transação, que dois pacientes não ocupem o mesmo horário.
+ * O modelo pode alucinar um horário; o banco não deixa o erro virar duas
+ * pessoas na mesma cadeira.
  */
 
 const MODEL = process.env.AGENT_MODEL ?? "claude-opus-5"
@@ -122,7 +132,17 @@ export async function processAgentTurn(job: AgentJob): Promise<TurnResult> {
           cache_control: { type: "ephemeral", ttl: CACHE_TTL },
         },
       ],
-      tools: buildReadTools(toolContext),
+      // Leitura, escrita e escalonamento numa lista só. A ORDEM IMPORTA para o
+      // cache: as definições de tool são renderizadas antes do system prompt e
+      // entram no mesmo breakpoint, então basta uma delas mudar de lugar entre
+      // turnos para o prefixo inteiro ser reescrito — a clínica pagaria 1x em
+      // vez de 0,1x, sem erro nenhum. Por isso a concatenação é fixa aqui, e
+      // não montada a partir de flag ou de configuração da clínica.
+      tools: [
+        ...buildReadTools(toolContext),
+        ...buildWriteTools(toolContext),
+        ...buildEscalationTools(toolContext),
+      ],
       messages: buildMessages(history),
     })
 
