@@ -69,14 +69,40 @@ export class RedacaoIndisponivel extends Error {
   }
 }
 
-/** Esquema JSON derivado dos campos do modelo. */
-function esquemaDoTemplate(campos: TemplateField[]) {
+/**
+ * Esquema JSON derivado dos campos do modelo.
+ *
+ * Exportado só para teste: é a peça que decide se uma consulta vira rascunho
+ * ou vira erro 400, e ela não é observável de fora sem uma chamada real ao
+ * provedor. Ninguém fora deste módulo deve chamá-la.
+ */
+export function esquemaDoTemplate(campos: TemplateField[]) {
   const properties: Record<string, any> = {}
   for (const c of campos) {
     const descricao = [c.label, c.hint].filter(Boolean).join(" — ")
     properties[c.key] =
       c.type === "select" && c.options?.length
-        ? { type: "string", enum: c.options, description: descricao }
+        ? {
+            type: "string",
+            // O "" ENTRA NO ENUM, e isto não é frouxidão de esquema.
+            //
+            // O prompt manda deixar vazio o campo que a consulta não cobriu, e
+            // todo campo é `required` logo abaixo. Num modelo com campo de
+            // escolha — "Fototipo (Fitzpatrick)", opções I..VI — uma consulta
+            // que não falou de fototipo obriga o modelo a devolver "", que não
+            // estava entre as opções. Com decodificação restrita isso não é um
+            // campo torto: é a REDAÇÃO INTEIRA recusada com 400, e a consulta
+            // se perde. Aconteceu em produção (sessão 7adc72ae, 14/08).
+            //
+            // São 6 campos `select` no catálogo de modelos do sistema; sem o ""
+            // cada um deles é uma consulta perdida esperando acontecer.
+            //
+            // Só o esquema do redator ganha a opção vazia. O `<select>` da tela
+            // continua com as opções clínicas e nada mais — lá o médico está
+            // escolhendo, não relatando ausência.
+            enum: [...c.options, ""],
+            description: descricao,
+          }
         : { type: "string", description: descricao }
   }
   return {
