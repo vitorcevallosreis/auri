@@ -23,7 +23,15 @@ if (existsSync(".env.local")) {
   }
 }
 
-const { supabaseServer } = await import("../src/lib/supabase/server.ts")
+// O cliente do WORKER, não o do app. Importar `src/lib/supabase/server.ts` daqui
+// quebrava desde 04/08: aquele arquivo passou a fazer `import ... from "./keys"`
+// sem extensão, que o resolvedor do bundler do Next entende e o carregador ESM
+// do Node não — `ERR_MODULE_NOT_FOUND`. O `npm run test:integration` inteiro
+// morria na primeira linha, e com ele a prova de que a fila do worker funciona.
+//
+// É exatamente o acoplamento que o cabeçalho de worker/supabase.mts diz que foi
+// desfeito de propósito. Este teste tinha ficado para trás.
+const { supabaseServer } = await import("../worker/supabase.mts")
 
 const COMPANY_ID = randomUUID()
 const CHAT_ID = randomUUID()

@@ -44,7 +44,23 @@ let captured: Captured | null = null
 let nextStatus = 200
 
 const realFetch = globalThis.fetch
+
+// O SUPABASE PRECISA PASSAR DIRETO. Este stub troca o `fetch` global, e o
+// supabase-js resolve `globalThis.fetch` na hora da chamada — então, sem este
+// desvio, TODA consulta ao banco feita lá dentro recebia a resposta falsa do
+// Evolution. O sintoma era enganoso: 14 asserções falhando com "chat não
+// pertence a esta clínica", como se `send.mts` tivesse um bug de tenant, quando
+// o que acontecia é que a leitura do chat nunca chegava ao Postgres.
+//
+// (Passava antes porque o cliente capturava o `fetch` na construção. A troca
+// para resolução tardia veio num bump de dependência, e este teste ficou
+// quebrado em silêncio — `npm run test:integration` já morria antes de chegar
+// aqui, por outro motivo.)
+const SUPABASE_HOST = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).host
+
 globalThis.fetch = (async (url: any, init: any) => {
+  if (String(url).includes(SUPABASE_HOST)) return realFetch(url, init)
+
   captured = {
     url: String(url),
     apikey: init?.headers?.apikey ?? null,
