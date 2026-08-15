@@ -120,8 +120,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * do efeito acima; `TOKEN_REFRESHED` é a renovação dando certo.
    */
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((evento) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (evento) => {
       if (evento !== "SIGNED_OUT") return
+
+      // CONFIRMAR ANTES DE DESTRUIR — `SIGNED_OUT` não quer dizer "está
+      // deslogado agora", quer dizer "alguma sessão foi removida".
+      //
+      // O auth-js roda `_recoverAndRefresh()` em segundo plano ao inicializar,
+      // sobre a sessão ANTIGA do localStorage. Se ela estiver inválida ele
+      // chama `_removeSession()`, que emite SIGNED_OUT — e esse evento pode
+      // chegar DEPOIS de um login novo ter dado certo.
+      //
+      // Era exatamente o bug do login que não redirecionava: `signIn` gravava o
+      // cookie, mostrava "Login realizado com sucesso" e chamava
+      // `router.push("/")`; o eco da sessão anterior então destruía o cookie
+      // recém-criado e fazia `router.replace("/login")`, que atropelava o push.
+      // De fora parecia que o login não tinha funcionado — mas tinha.
+      //
+      // `getSession` lê do storage, não vai à rede. Se há sessão válida agora,
+      // este SIGNED_OUT é passado e não tem o que reconciliar.
+      //
+      // Reentrância conhecida e inofensiva: quando a sessão guardada é
+      // inválida, o próprio `getSession` chama `_removeSession()` e emite um
+      // SEGUNDO SIGNED_OUT. Ele reentra aqui uma vez, encontra o storage já
+      // vazio e refaz um encerramento idempotente (destruir cookie e
+      // `replace` para uma tela onde já se está). Termina em um passo — não é
+      // laço —, mas quem for mexer aqui precisa saber que existe.
+      const { data } = await supabase.auth.getSession()
+      if (data.session) return
+
       destroyCookie(null, "authData", { path: "/" })
       authStore.clearAuth()
       set_user(USUARIO_VAZIO)
