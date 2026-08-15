@@ -29,6 +29,16 @@ const WEEKDAY_BY_KEY: Record<string, number> = {
   sunday: 7,
 }
 
+const KEY_BY_WEEKDAY: Record<number, string> = Object.fromEntries(
+  Object.entries(WEEKDAY_BY_KEY).map(([k, v]) => [v, k])
+)
+
+/** "08:00:00" e "08:00" são a mesma hora; o banco devolve a primeira forma e o
+ *  formulário produz a segunda. Comparar sem normalizar faria toda janela
+ *  carregada parecer diferente da salva — e o "substituir" apagaria e
+ *  recriaria tudo a cada gravação. */
+const hhmm = (t: string | null | undefined) => String(t ?? "").slice(0, 5)
+
 export const ProfessionalsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -193,6 +203,181 @@ export const ProfessionalsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (availabilityError) throw availabilityError
   }
 
+  /**
+   * Lê do banco os serviços e a agenda que o profissional JÁ tem.
+   *
+   * Existia um buraco aqui: o modal de edição nunca carregava isto, então ele
+   * não tinha como mostrar a agenda atual nem como respeitá-la ao salvar. A
+   * consequência era que a agenda só podia ser definida no CADASTRO — e a
+   * clínica que quisesse mudar um horário na segunda semana não tinha por onde.
+   *
+   * A agenda volta como LISTA de janelas por dia, não como um par
+   * abertura/fechamento. O banco sempre permitiu várias linhas por
+   * (profissional, serviço, dia) — é assim que o intervalo de almoço existe —
+   * e colapsar isso em uma janela só transformaria 08:00–12:00 + 13:00–18:00
+   * em 08:00–18:00, oferecendo consulta ao meio-dia.
+   */
+  const loadProfessionalCatalog = async (professionalId: UUID) => {
+    const [{ data: svc, error: svcErr }, { data: av, error: avErr }] = await Promise.all([
+      supabase
+        .from(SUPA_TABLES.table_myia_professional_services)
+        .select("service_id, mode, price, max_people")
+        .eq("professional_id", professionalId),
+      supabase
+        .from(SUPA_TABLES.table_myia_professional_availability)
+        .select("service_id, weekday, start_time, end_time")
+        .eq("professional_id", professionalId)
+        .order("weekday")
+        .order("start_time"),
+    ])
+
+    if (svcErr) throw svcErr
+    if (avErr) throw avErr
+
+    const services = (svc ?? []).map((s: any) => ({
+      service_id: s.service_id,
+      tipo: (s.mode ?? "INDIVIDUAL") as "INDIVIDUAL" | "GRUPO" | "AMBOS",
+      amount: s.price ?? 0,
+      max_pessoas: s.max_people ?? 2,
+    }))
+
+    // A agenda é a mesma para todos os serviços do profissional (o cadastro
+    // grava uma linha por serviço com os mesmos horários), então desduplicamos
+    // por (dia, início, fim). Mostrar a mesma janela seis vezes porque ele
+    // atende seis serviços seria ruído, não informação.
+    const agenda: Record<string, Array<{ opening: string; closing: string }>> = {}
+    const vistas = new Set<string>()
+
+    for (const linha of av ?? []) {
+      const dia = KEY_BY_WEEKDAY[(linha as any).weekday]
+      if (!dia) continue
+      const opening = hhmm((linha as any).start_time)
+      const closing = hhmm((linha as any).end_time)
+      const chave = `${dia}|${opening}|${closing}`
+      if (vistas.has(chave)) continue
+      vistas.add(chave)
+      ;(agenda[dia] ??= []).push({ opening, closing })
+    }
+
+    return { services, agenda }
+  }
+
+  /**
+   * Grava serviços e agenda SUBSTITUINDO o que existia.
+   *
+   * `saveProfessionalCatalog` só faz upsert, e upsert não sabe remover: com ele,
+   * desmarcar um dia ou apagar um serviço não tinha efeito nenhum — a tela
+   * dizia que salvou e o agente continuava oferecendo o horário removido. Este
+   * é o caminho de EDIÇÃO, onde tirar é tão importante quanto pôr.
+   *
+   * Ordem deliberada: grava o novo ANTES de apagar o que sobrou. O PostgREST
+   * não dá transação entre as requisições, e apagar primeiro abriria uma
+   * janela — de milissegundos, mas real — em que o profissional existe sem
+   * agenda nenhuma. Nessa janela o agente responde "não tenho horário".
+   */
+  const replaceProfessionalCatalog = async (
+    professionalId: UUID,
+    catalog: {
+      services: Array<{ service_id: string; tipo?: string; amount?: number; max_pessoas?: number }>
+      agenda: Record<string, Array<{ opening: string; closing: string }>>
+    }
+  ) => {
+    const services = catalog.services ?? []
+
+    // -- 1. Serviços: grava os escolhidos --------------------------------
+    if (services.length > 0) {
+      const { error } = await supabase
+        .from(SUPA_TABLES.table_myia_professional_services)
+        .upsert(
+          services.map((s) => ({
+            professional_id: professionalId,
+            service_id: s.service_id,
+            mode: s.tipo ?? "INDIVIDUAL",
+            price: s.amount ?? null,
+            max_people: s.max_pessoas ?? null,
+          })),
+          { onConflict: "professional_id,service_id" }
+        )
+      if (error) throw error
+    }
+
+    // -- 2. Agenda: grava as janelas escolhidas --------------------------
+    const desejadas = new Set<string>()
+    const linhas: Array<Record<string, unknown>> = []
+
+    for (const [dia, janelas] of Object.entries(catalog.agenda ?? {})) {
+      const weekday = WEEKDAY_BY_KEY[dia]
+      if (!weekday) continue
+
+      for (const j of janelas ?? []) {
+        const opening = hhmm(j.opening)
+        const closing = hhmm(j.closing)
+        // Janela incompleta ou invertida é descartada em silêncio de propósito:
+        // a validação com mensagem é da tela, e deixar passar `end <= start`
+        // criaria uma linha que nunca gera slot nenhum.
+        if (!opening || !closing || closing <= opening) continue
+
+        for (const s of services) {
+          desejadas.add(`${s.service_id}|${weekday}|${opening}`)
+          linhas.push({
+            professional_id: professionalId,
+            service_id: s.service_id,
+            weekday,
+            start_time: opening,
+            end_time: closing,
+            max_simultaneous_clients: 1,
+          })
+        }
+      }
+    }
+
+    if (linhas.length > 0) {
+      const { error } = await supabase
+        .from(SUPA_TABLES.table_myia_professional_availability)
+        .upsert(linhas, { onConflict: "professional_id,service_id,weekday,start_time" })
+      if (error) throw error
+    }
+
+    // -- 3. Agora sim, apaga o que não faz mais parte --------------------
+    const idsServico = new Set(services.map((s) => s.service_id))
+
+    const { data: svcAtuais } = await supabase
+      .from(SUPA_TABLES.table_myia_professional_services)
+      .select("id, service_id")
+      .eq("professional_id", professionalId)
+
+    const svcSobrando = (svcAtuais ?? [])
+      .filter((r: any) => !idsServico.has(r.service_id))
+      .map((r: any) => r.id)
+
+    if (svcSobrando.length > 0) {
+      const { error } = await supabase
+        .from(SUPA_TABLES.table_myia_professional_services)
+        .delete()
+        .in("id", svcSobrando)
+      if (error) throw error
+    }
+
+    const { data: avAtuais } = await supabase
+      .from(SUPA_TABLES.table_myia_professional_availability)
+      .select("id, service_id, weekday, start_time")
+      .eq("professional_id", professionalId)
+
+    const avSobrando = (avAtuais ?? [])
+      .filter(
+        (r: any) => !desejadas.has(`${r.service_id}|${r.weekday}|${hhmm(r.start_time)}`)
+      )
+      .map((r: any) => r.id)
+
+    if (avSobrando.length > 0) {
+      const { error } = await supabase
+        .from(SUPA_TABLES.table_myia_professional_availability)
+        .delete()
+        .in("id", avSobrando)
+      if (error) throw error
+    }
+  }
+
   const updateProfessional = async (
     id: UUID,
     professional: ProfessionalUpdateInput
@@ -316,6 +501,8 @@ export const ProfessionalsProvider: React.FC<{ children: React.ReactNode }> = ({
         createProfessional,
         updateProfessional,
         setProfessionalCatalog: saveProfessionalCatalog,
+        loadProfessionalCatalog,
+        replaceProfessionalCatalog,
         deleteProfessional,
         setAvailability,
       }}

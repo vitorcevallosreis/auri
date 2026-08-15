@@ -63,7 +63,8 @@ export default function ProfessionalEditModal({
   onAfterClose
 }: ProfessionalEditModalProps) {
   // Context hooks
-  const { updateProfessional } = useProfessionals();
+  const { updateProfessional, loadProfessionalCatalog, replaceProfessionalCatalog } =
+    useProfessionals();
   const { companyAgreements, getCompany, getCompanyAgreements, company } = useCompany();
   const { services, getServices } = useServices();
   const { specialties, getSpecialties } = useSpecialties();
@@ -103,6 +104,53 @@ export default function ProfessionalEditModal({
   });
   // Usamos o isLoading do contexto da empresa
   const [selectedTab, setSelectedTab] = useState("info");
+
+  // A AGENDA DE VERDADE — a que o agente lê em myia_professional_availability.
+  //
+  // Vive fora de `formData.scheduler` porque as duas coisas não têm a mesma
+  // forma. `scheduler` (e a coluna `horarios_atendimento`) guarda UM par
+  // abertura/fechamento por dia, que é o que o formulário de cadastro sabe
+  // pedir. O banco guarda uma LISTA de janelas por dia, e é por isso que o
+  // intervalo de almoço existe: 08:00–12:00 e 13:00–18:00 são duas linhas.
+  //
+  // Colapsar as duas em uma só transformaria essa agenda em 08:00–18:00 e o
+  // agente passaria a oferecer consulta ao meio-dia — sem erro em lugar nenhum.
+  const [agenda, setAgenda] = useState<Record<string, Array<{ opening: string; closing: string }>>>({});
+  const [agendaCarregada, setAgendaCarregada] = useState(false);
+
+  const janelasDe = (dia: string) => agenda[dia] ?? [];
+
+  const mudarJanela = (dia: string, i: number, campo: "opening" | "closing", valor: string) => {
+    setAgenda((prev) => {
+      const lista = [...(prev[dia] ?? [])];
+      lista[i] = { ...lista[i], [campo]: valor };
+      return { ...prev, [dia]: lista };
+    });
+  };
+
+  const adicionarJanela = (dia: string) => {
+    setAgenda((prev) => {
+      const lista = prev[dia] ?? [];
+      // A segunda janela do dia nasce depois do almoço, que é o caso real de
+      // quem clica em "adicionar". Um par vazio faria o usuário digitar quatro
+      // campos para o arranjo mais comum que existe.
+      const sugestao = lista.length === 0
+        ? { opening: "08:00", closing: "12:00" }
+        : { opening: "13:00", closing: "18:00" };
+      return { ...prev, [dia]: [...lista, sugestao] };
+    });
+  };
+
+  const removerJanela = (dia: string, i: number) => {
+    setAgenda((prev) => ({ ...prev, [dia]: (prev[dia] ?? []).filter((_, j) => j !== i) }));
+  };
+
+  const diaAtivo = (dia: string) => janelasDe(dia).length > 0;
+
+  const alternarDia = (dia: string, ligado: boolean) => {
+    if (ligado) adicionarJanela(dia);
+    else setAgenda((prev) => ({ ...prev, [dia]: [] }));
+  };
 
   // Day translation
   const dayNames: Record<string, string> = {
@@ -211,6 +259,45 @@ export default function ProfessionalEditModal({
     }
   }, [professional, isOpen]);
 
+  // Serviços e agenda vêm do BANCO, não do objeto `professional`.
+  //
+  // `professional.services` e `horarios_atendimento` são campos de UI/exibição
+  // que a listagem monta; nenhum dos dois é a fonte que o agente consulta. Até
+  // aqui este modal simplesmente não carregava o catálogo, e por isso não podia
+  // gravá-lo: regravar sem ter carregado apagaria a agenda feita no cadastro.
+  // Carregar é o que destrava editar.
+  useEffect(() => {
+    if (!isOpen || !professional?.id) return;
+
+    let cancelado = false;
+    setAgendaCarregada(false);
+
+    loadProfessionalCatalog(professional.id as any)
+      .then((catalogo) => {
+        if (cancelado) return;
+        setAgenda(catalogo.agenda);
+        // Só sobrescreve os serviços se o banco tiver algo a dizer. Um
+        // profissional antigo, cadastrado antes de a tela gravar o catálogo,
+        // não pode ter a seleção zerada só por abrir o modal.
+        if (catalogo.services.length > 0) {
+          setFormData((prev) => ({ ...prev, services: catalogo.services as ServiceData[] }));
+        }
+        setAgendaCarregada(true);
+      })
+      .catch((erro) => {
+        console.error("Erro ao carregar a agenda do profissional:", erro);
+        toast.error("Não consegui carregar a agenda deste profissional.");
+        // Fica FALSO de propósito: salvar sem ter carregado apagaria a agenda
+        // existente, e é exatamente o que o `handleSubmit` checa antes de
+        // tocar em myia_professional_availability.
+        setAgendaCarregada(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [isOpen, professional?.id]);
+
   // Handle input changes
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -305,35 +392,9 @@ export default function ProfessionalEditModal({
     }
   };
 
-  // Handle schedule changes
-  const handleScheduleChange = (day: string, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      scheduler: {
-        ...prev.scheduler,
-        [day]: {
-          ...(prev.scheduler[day] || {}),
-          [field]: value
-        }
-      }
-    }));
-
-    // Clear time fields when day is disabled
-    if (field === 'enabled' && !value) {
-      setFormData(prev => ({
-        ...prev,
-        scheduler: {
-          ...prev.scheduler,
-          [day]: {
-            ...(prev.scheduler[day] || {}),
-            enabled: false,
-            opening: null,
-            closing: null
-          }
-        }
-      }));
-    }
-  };
+  // `handleScheduleChange` foi removido junto com o editor de uma janela por
+  // dia. Quem edita agenda agora é `agenda`/`mudarJanela` acima, que fala com
+  // myia_professional_availability — a tabela que o agente realmente lê.
 
   // Submit form
   const handleSubmit = async () => {
@@ -373,69 +434,86 @@ export default function ProfessionalEditModal({
         return;
       }
 
-      // Check if at least one day is scheduled with times
-      const hasSchedule = Object.values(formData.scheduler || {}).some(
-        (day: any) => day.enabled && day.opening && day.closing
+      // A agenda é validada contra `agenda` (o que o banco guarda), não contra
+      // `formData.scheduler` (o JSON de exibição). Eram fontes diferentes, e a
+      // antiga aprovava um profissional cuja agenda real estava vazia.
+      const janelas = Object.entries(agenda).flatMap(([dia, lista]) =>
+        (lista ?? []).map((j) => ({ dia, ...j }))
       );
 
-      if (!hasSchedule) {
+      if (janelas.length === 0) {
         toast.error("Configure pelo menos um dia com horários de atendimento");
         setSelectedTab("schedule");
         setIsLoading(false);
         return;
       }
 
-      // Format the scheduler to match the Professional type
-      const formattedScheduler = {
-        monday: {
-          enabled: !!formData.scheduler?.monday?.enabled,
-          opening: formData.scheduler?.monday?.opening || null,
-          closing: formData.scheduler?.monday?.closing || null
-        },
-        tuesday: {
-          enabled: !!formData.scheduler?.tuesday?.enabled,
-          opening: formData.scheduler?.tuesday?.opening || null,
-          closing: formData.scheduler?.tuesday?.closing || null
-        },
-        wednesday: {
-          enabled: !!formData.scheduler?.wednesday?.enabled,
-          opening: formData.scheduler?.wednesday?.opening || null,
-          closing: formData.scheduler?.wednesday?.closing || null
-        },
-        thursday: {
-          enabled: !!formData.scheduler?.thursday?.enabled,
-          opening: formData.scheduler?.thursday?.opening || null,
-          closing: formData.scheduler?.thursday?.closing || null
-        },
-        friday: {
-          enabled: !!formData.scheduler?.friday?.enabled,
-          opening: formData.scheduler?.friday?.opening || null,
-          closing: formData.scheduler?.friday?.closing || null
-        },
-        saturday: {
-          enabled: !!formData.scheduler?.saturday?.enabled,
-          opening: formData.scheduler?.saturday?.opening || null,
-          closing: formData.scheduler?.saturday?.closing || null
-        },
-        sunday: {
-          enabled: !!formData.scheduler?.sunday?.enabled,
-          opening: formData.scheduler?.sunday?.opening || null,
-          closing: formData.scheduler?.sunday?.closing || null
-        }
-      };
+      const incompleta = janelas.find((j) => !j.opening || !j.closing);
+      if (incompleta) {
+        toast.error(`Preencha os dois horários de ${dayNames[incompleta.dia]}`);
+        setSelectedTab("schedule");
+        setIsLoading(false);
+        return;
+      }
 
-      // Só colunas de `myia_professionals_medical`. Serviços e disponibilidade
-      // NÃO são tocados aqui: este modal nunca carrega os que já existem
-      // (`professional.services` não vem do banco), então regravá-los apagaria
-      // a agenda que o cadastro criou. Hoje a agenda que o agente consulta só é
-      // escrita no cadastro — /professionals/availability é de outro schema
-      // (day_of_week/is_available) e chama uma função que não existe no
-      // contexto, então nem salva. Editar agenda de profissional existente
-      // continua pendente.
-      //
-      // `horarios_atendimento` abaixo é o JSON exibido no painel; ele NÃO é o
-      // que o agente lê. Quem manda para o agente é
-      // myia_professional_availability.
+      const invertida = janelas.find((j) => j.closing <= j.opening);
+      if (invertida) {
+        toast.error(
+          `Em ${dayNames[invertida.dia]}, o fim (${invertida.closing}) precisa ser depois do início (${invertida.opening}).`
+        );
+        setSelectedTab("schedule");
+        setIsLoading(false);
+        return;
+      }
+
+      // Duas janelas que se cruzam no mesmo dia geram linhas concorrentes e o
+      // agente ofereceria o mesmo horário duas vezes. Barrar aqui é mais barato
+      // que explicar depois.
+      for (const dia of Object.keys(agenda)) {
+        const lista = [...(agenda[dia] ?? [])].sort((a, b) => a.opening.localeCompare(b.opening));
+        for (let i = 1; i < lista.length; i++) {
+          if (lista[i].opening < lista[i - 1].closing) {
+            toast.error(`As faixas de ${dayNames[dia]} se sobrepõem.`);
+            setSelectedTab("schedule");
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+
+      if (!agendaCarregada) {
+        // Sem ter carregado a agenda atual, "substituir" apagaria o que existe.
+        toast.error("A agenda deste profissional não carregou. Feche e abra o modal de novo.");
+        setIsLoading(false);
+        return;
+      }
+
+      // `horarios_atendimento` é a coluna de EXIBIÇÃO do painel; quem manda
+      // para o agente é myia_professional_availability. Deriva-se da agenda
+      // real para as duas não divergirem — mas ela só cabe uma janela por dia,
+      // então guarda a PRIMEIRA e o dia fica marcado como ativo. É perda
+      // conhecida e só afeta o texto mostrado na listagem.
+      const formattedScheduler = Object.fromEntries(
+        weekDays.map((d) => {
+          const lista = [...(agenda[d.id] ?? [])].sort((a, b) =>
+            a.opening.localeCompare(b.opening)
+          );
+          return [
+            d.id,
+            {
+              enabled: lista.length > 0,
+              opening: lista[0]?.opening ?? null,
+              closing: lista[lista.length - 1]?.closing ?? null,
+            },
+          ];
+        })
+      );
+
+      // Só colunas de `myia_professionals_medical`. Serviços e agenda vão numa
+      // segunda requisição, logo abaixo — o PostgREST não dá transação entre as
+      // duas, e a ordem escolhida (profissional primeiro) é a que falha melhor:
+      // se a segunda quebrar, o cadastro está salvo e a agenda continua a
+      // antiga, em vez de o profissional ficar sem agenda nenhuma.
       const updatedProfessional = {
         nome: formData.nome || '',
         formacao: formData.formacao || '',
@@ -460,6 +538,14 @@ export default function ProfessionalEditModal({
       };
 
       await updateProfessional(professional.id, updatedProfessional);
+
+      // A agenda que o agente lê. `replace`, não `upsert`: o dia que o usuário
+      // desmarcou precisa SUMIR do banco — com upsert a tela dizia "salvo" e o
+      // agente seguia oferecendo o horário removido.
+      await replaceProfessionalCatalog(professional.id as any, {
+        services: formData.services ?? [],
+        agenda,
+      });
 
       toast.success("Profissional atualizado com sucesso");
       setIsLoading(false);
@@ -770,50 +856,91 @@ export default function ProfessionalEditModal({
                 </Tab>
                 
                 <Tab key="schedule" title="Agenda">
-                  <div className="space-y-6 py-4">
-                    <h3 className="text-md font-medium">Horários de Atendimento</h3>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <h3 className="text-md font-medium">Horários de Atendimento</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        É esta agenda que a IA consulta para oferecer horário ao paciente.
+                        Use duas faixas no mesmo dia para o intervalo de almoço.
+                      </p>
+                    </div>
+
+                    {!agendaCarregada && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Spinner size="sm" />
+                        Carregando a agenda atual…
+                      </div>
+                    )}
+
                     <Accordion>
                       {weekDays.map((day) => (
-                        <AccordionItem 
-                          key={day.id} 
+                        <AccordionItem
+                          key={day.id}
                           title={dayNames[day.id]}
+                          subtitle={
+                            diaAtivo(day.id)
+                              ? janelasDe(day.id)
+                                  .map((j) => `${j.opening || "--:--"}–${j.closing || "--:--"}`)
+                                  .join("  ·  ")
+                              : "Não atende"
+                          }
                           startContent={
                             <Checkbox
-                              isSelected={!!formData.scheduler?.[day.id]?.enabled}
-                              onValueChange={(checked) => 
-                                handleScheduleChange(day.id, "enabled", checked)
-                              }
+                              isSelected={diaAtivo(day.id)}
+                              isDisabled={!agendaCarregada}
+                              onValueChange={(marcado) => alternarDia(day.id, marcado)}
                             />
                           }
                         >
-                          {formData.scheduler?.[day.id]?.enabled && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium">Abertura</label>
-                                <div className="flex items-center space-x-2">
-                                  <Clock size={16} className="text-muted-foreground" />
-                                  <Input
-                                    type="time"
-                                    value={formData.scheduler?.[day.id]?.opening || ""}
-                                    onChange={(e) => 
-                                      handleScheduleChange(day.id, "opening", e.target.value)
-                                    }
-                                  />
+                          {diaAtivo(day.id) && (
+                            <div className="space-y-3 mt-2">
+                              {janelasDe(day.id).map((janela, i) => (
+                                <div key={i} className="flex items-end gap-3">
+                                  <div className="space-y-1 flex-1">
+                                    <label className="text-sm font-medium">Início</label>
+                                    <div className="flex items-center space-x-2">
+                                      <Clock size={16} className="text-muted-foreground" />
+                                      <Input
+                                        type="time"
+                                        value={janela.opening || ""}
+                                        onChange={(e) =>
+                                          mudarJanela(day.id, i, "opening", e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1 flex-1">
+                                    <label className="text-sm font-medium">Fim</label>
+                                    <div className="flex items-center space-x-2">
+                                      <Clock size={16} className="text-muted-foreground" />
+                                      <Input
+                                        type="time"
+                                        value={janela.closing || ""}
+                                        onChange={(e) =>
+                                          mudarJanela(day.id, i, "closing", e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+                                  <Button
+                                    isIconOnly
+                                    variant="light"
+                                    aria-label={`Remover faixa de ${dayNames[day.id]}`}
+                                    onPress={() => removerJanela(day.id, i)}
+                                  >
+                                    <Minus size={16} />
+                                  </Button>
                                 </div>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium">Fechamento</label>
-                                <div className="flex items-center space-x-2">
-                                  <Clock size={16} className="text-muted-foreground" />
-                                  <Input
-                                    type="time"
-                                    value={formData.scheduler?.[day.id]?.closing || ""}
-                                    onChange={(e) => 
-                                      handleScheduleChange(day.id, "closing", e.target.value)
-                                    }
-                                  />
-                                </div>
-                              </div>
+                              ))}
+
+                              <Button
+                                size="sm"
+                                variant="flat"
+                                startContent={<Plus size={16} />}
+                                onPress={() => adicionarJanela(day.id)}
+                              >
+                                Adicionar faixa
+                              </Button>
                             </div>
                           )}
                         </AccordionItem>

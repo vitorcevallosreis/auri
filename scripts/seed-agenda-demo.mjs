@@ -168,8 +168,12 @@ try {
     const servico = servicoDo(prof);
 
     await q(
+      // `mode` é texto livre no banco, mas o painel escreve e lê
+      // 'INDIVIDUAL'|'GRUPO'|'AMBOS' (o RadioGroup do modal de edição casa por
+      // valor exato). Gravar 'presencial' aqui deixaria o rádio sem nenhuma
+      // opção marcada ao abrir um profissional do seed.
       `insert into myia_professional_services (id, professional_id, service_id, mode, max_people)
-       values ($1, $2, $3, 'presencial', 1)`,
+       values ($1, $2, $3, 'INDIVIDUAL', 1)`,
       [demoId(PREFIX.professionalService, i + 1), prof.id, servico.id],
     );
     nPS++;

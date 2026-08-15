@@ -10,6 +10,8 @@ export const defaultProfessionalsContext: ProfessionalsContextType = {
   createProfessional: async () => undefined,
   updateProfessional: async () => {},
   setProfessionalCatalog: async () => {},
+  loadProfessionalCatalog: async () => ({ services: [], agenda: {} }),
+  replaceProfessionalCatalog: async () => {},
   deleteProfessional: async () => {},
   setAvailability: async () => {},
 };

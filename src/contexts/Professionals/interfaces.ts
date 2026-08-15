@@ -140,6 +140,31 @@ export interface ProfessionalCatalogInput {
   scheduler: Record<string, ProfessionalScheduleDay>
 }
 
+// Uma faixa de atendimento contínua. O dia é uma LISTA delas, não um par
+// abertura/fechamento: é assim que o intervalo de almoço existe. O banco sempre
+// permitiu várias linhas por (profissional, serviço, dia); só o formulário de
+// cadastro é que ainda enxerga uma janela só.
+export interface JanelaDeAtendimento {
+  opening: string
+  closing: string
+}
+
+/** Agenda semanal como o banco a guarda: várias janelas por dia. */
+export type AgendaSemanal = Record<string, JanelaDeAtendimento[]>
+
+export interface ProfessionalServiceInput {
+  service_id: string
+  tipo?: "INDIVIDUAL" | "GRUPO" | "AMBOS"
+  amount?: number
+  max_pessoas?: number
+}
+
+/** Serviços + agenda de um profissional JÁ cadastrado, para editar. */
+export interface ProfessionalCatalogSnapshot {
+  services: Array<Required<Pick<ProfessionalServiceInput, "service_id">> & ProfessionalServiceInput>
+  agenda: AgendaSemanal
+}
+
 export interface ProfessionalsContextType {
   professionals: Professional[]
   availability: ProfessionalAvailability[]
@@ -158,6 +183,15 @@ export interface ProfessionalsContextType {
   setProfessionalCatalog: (
     professionalId: UUID,
     catalog: ProfessionalCatalogInput
+  ) => Promise<void>
+  /** Lê serviços + agenda de quem já está cadastrado (para a tela de edição). */
+  loadProfessionalCatalog: (
+    professionalId: UUID
+  ) => Promise<ProfessionalCatalogSnapshot>
+  /** Grava SUBSTITUINDO: o que o usuário tirou some do banco. */
+  replaceProfessionalCatalog: (
+    professionalId: UUID,
+    catalog: ProfessionalCatalogSnapshot
   ) => Promise<void>
   deleteProfessional: (id: UUID) => Promise<void>
   setAvailability: (
