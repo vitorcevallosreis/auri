@@ -591,7 +591,23 @@ export default function ProfessionalEditModal({
                   selectedKey={selectedTab}
                   onSelectionChange={setSelectedTab as any}
                   aria-label="Edição do Profissional"
-                  classNames={{ tabList: 'min-w-[700px]' }}
+                  // QUEM ROLA TEM DE SER A TIRA DE ABAS, NÃO O WRAPPER.
+                  //
+                  // O wrapper do NextUI (slot `base`) contém a lista de abas E o
+                  // painel, e nasce com `overflow-x: auto`. O `min-w-[700px]`
+                  // que estava aqui impedia a lista de encolher, então ela
+                  // estourava os 720px do modal — e o navegador, ao focar uma
+                  // aba do fim, rolava o WRAPPER para trazê-la à vista,
+                  // arrastando o painel junto uns 150px para a esquerda.
+                  //
+                  // O sintoma era o conteúdo cortado: "Observações sobre o
+                  // atendimento" virava "dimento", e os horários da agenda
+                  // apareciam como ":00–18:00". Valia para toda aba do fim da
+                  // tira, não só para a Agenda.
+                  //
+                  // A lista já tem `overflow-x-scroll` própria: basta deixá-la
+                  // encolher e travar o wrapper.
+                  classNames={{ base: 'w-full overflow-x-hidden', tabList: 'w-full' }}
                 >
                 <Tab key="info" title="Informações Básicas">
                   <div className="space-y-4 py-2">

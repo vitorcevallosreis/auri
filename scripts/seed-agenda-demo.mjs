@@ -161,6 +161,34 @@ try {
     );
   }
 
+  // -- Cadastro mínimo para o profissional ser EDITÁVEL --------------------
+  //
+  // `atende_cat_idade` e `convenios_aceitos` estavam nulos nos 12 profissionais.
+  // Não é só um campo em branco na tela: `handleSubmit` do modal de edição
+  // exige categoria de idade em QUALQUER gravação, então um profissional sem
+  // ela não pode ser editado de jeito nenhum — mexer no horário dele devolve
+  // "Selecione pelo menos uma categoria de idade" e joga o usuário numa aba
+  // que ele não estava editando.
+  //
+  // `convenios_aceitos` guarda NOME, não id: é lido por `listar_profissionais`
+  // e sai pela boca do agente. UUID ali faria ele dizer ao paciente que atende
+  // "o convênio 3f2b91a4-…".
+  const { rows: convenios } = await q(
+    `select name from myia_company_agreements where company_id = $1 and status is true`,
+    [COMPANY_ID],
+  );
+  const nomesDeConvenio = convenios.map((c) => c.name);
+
+  const { rowCount: nCadastro } = await q(
+    `update myia_professionals_medical
+        set atende_cat_idade = coalesce(atende_cat_idade, $2),
+            convenios_aceitos = coalesce(convenios_aceitos, $3)
+      where company_id = $1
+        and (atende_cat_idade is null or convenios_aceitos is null)`,
+    [COMPANY_ID, ["Adulto", "Adolescente", "Criança"], nomesDeConvenio],
+  );
+  if (nCadastro) console.log(`  completou o cadastro de ${nCadastro} profissional(is)`);
+
   let nPS = 0;
   let nAV = 0;
 
