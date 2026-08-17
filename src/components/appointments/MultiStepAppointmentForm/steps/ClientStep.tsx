@@ -134,9 +134,9 @@ export const ClientStep: React.FC<ClientStepProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <div className="bg-blue-50 p-4 border-b">
-          <h3 className="text-base font-medium text-blue-700 flex items-center">
+      <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+        <div className="bg-blue-50 p-4 border-b dark:bg-blue-500/10">
+          <h3 className="text-base font-medium text-blue-700 flex items-center dark:text-blue-300">
             <User className="mr-2 h-5 w-5" />
             Selecione ou crie um cliente
           </h3>
@@ -146,19 +146,19 @@ export const ClientStep: React.FC<ClientStepProps> = ({
           <RadioGroup 
             value={createNew ? 'new' : 'existing'} 
             onValueChange={(value) => setCreateNew(value === 'new')}
-            className="flex flex-col md:flex-row gap-4 mb-4 p-3 bg-gray-50 rounded-md border"
+            className="flex flex-col md:flex-row gap-4 mb-4 p-3 bg-muted rounded-md border"
           >
-            <div className="flex items-center space-x-2 flex-1 p-2 rounded-md hover:bg-white transition-colors">
-              <RadioGroupItem value="existing" id="existing" className="text-blue-600" />
+            <div className="flex items-center space-x-2 flex-1 p-2 rounded-md hover:bg-card transition-colors">
+              <RadioGroupItem value="existing" id="existing" className="text-blue-600 dark:text-blue-400" />
               <Label htmlFor="existing" className="flex items-center cursor-pointer">
-                <User className="mr-2 h-5 w-5 text-blue-600" />
+                <User className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <span className="font-medium">Selecionar cliente existente</span>
               </Label>
             </div>
-            <div className="flex items-center space-x-2 flex-1 p-2 rounded-md hover:bg-white transition-colors">
-              <RadioGroupItem value="new" id="new" className="text-green-600" />
+            <div className="flex items-center space-x-2 flex-1 p-2 rounded-md hover:bg-card transition-colors">
+              <RadioGroupItem value="new" id="new" className="text-green-600 dark:text-green-400" />
               <Label htmlFor="new" className="flex items-center cursor-pointer">
-                <UserPlus className="mr-2 h-5 w-5 text-green-600" />
+                <UserPlus className="mr-2 h-5 w-5 text-green-600 dark:text-green-400" />
                 <span className="font-medium">Criar novo cliente</span>
               </Label>
             </div>
@@ -167,10 +167,10 @@ export const ClientStep: React.FC<ClientStepProps> = ({
           {!createNew ? (
             <div className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar cliente por nome, telefone ou email"
-                  className="pl-10 py-6 border-gray-300 focus:border-blue-400 focus:ring-blue-400"
+                  className="pl-10 py-6 border-border focus:border-blue-400 focus:ring-blue-400 dark:focus:border-blue-500/40"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -180,17 +180,17 @@ export const ClientStep: React.FC<ClientStepProps> = ({
                 {isLoading ? (
                   <div className="p-8 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Buscando clientes...</p>
+                    <p className="text-muted-foreground">Buscando clientes...</p>
                   </div>
                 ) : contacts.length === 0 ? (
                   <div className="p-8 text-center">
-                    <UserX className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                    <p className="text-gray-600 mb-2">Nenhum cliente encontrado.</p>
-                    <p className="text-sm text-gray-500 mb-4">Tente outra busca ou crie um novo cliente.</p>
+                    <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground mb-2">Nenhum cliente encontrado.</p>
+                    <p className="text-sm text-muted-foreground mb-4">Tente outra busca ou crie um novo cliente.</p>
                     <Button
                       variant="outline"
                       onClick={() => setCreateNew(true)}
-                      className="bg-white"
+                      className="bg-card"
                     >
                       <UserPlus className="mr-2 h-4 w-4" />
                       Criar novo cliente
@@ -203,22 +203,22 @@ export const ClientStep: React.FC<ClientStepProps> = ({
                         <div
                           key={contact.id}
                           className={`p-4 hover:bg-blue-50 cursor-pointer transition-colors ${
-                            selectedContactId === contact.id ? 'bg-blue-100 border-l-4 border-blue-500' : ''
+                            selectedContactId === contact.id ? 'bg-blue-100 border-l-4 border-blue-500 dark:bg-blue-500/15' : ''
                           }`}
                           onClick={() => handleContactSelect(contact.id)}
                         >
                           <div className="flex items-center">
                             <div className="flex-1">
-                              <div className="font-medium text-gray-900">{contact.name}</div>
+                              <div className="font-medium text-foreground">{contact.name}</div>
                               {contact.number && (
-                                <div className="text-sm text-gray-500 flex items-center mt-1">
+                                <div className="text-sm text-muted-foreground flex items-center mt-1">
                                   <Phone className="h-3.5 w-3.5 mr-1.5" />
                                   {contact.number}
                                 </div>
                               )}
                             </div>
                             {selectedContactId === contact.id && (
-                              <CheckCircle className="h-5 w-5 text-blue-600" />
+                              <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             )}
                           </div>
                         </div>
@@ -229,40 +229,40 @@ export const ClientStep: React.FC<ClientStepProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border p-4 shadow-sm">
-              <div className="flex items-center mb-4 text-green-700">
+            <div className="bg-card rounded-lg border p-4 shadow-sm">
+              <div className="flex items-center mb-4 text-green-700 dark:text-green-300">
                 <UserPlus className="h-5 w-5 mr-2" />
                 <h4 className="font-medium">Informações do novo cliente</h4>
               </div>
               
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700">Nome do cliente *</Label>
+                  <Label htmlFor="name" className="text-foreground">Nome do cliente *</Label>
                   <Input
                     id="name"
                     value={newClient.name}
                     onChange={(e) => handleNewClientChange('name', e.target.value)}
-                    className="border-gray-300 focus:border-blue-400 focus:ring-blue-400"
+                    className="border-border focus:border-blue-400 focus:ring-blue-400 dark:focus:border-blue-500/40"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700">Telefone</Label>
+                  <Label htmlFor="phone" className="text-foreground">Telefone</Label>
                   <Input
                     id="phone"
                     value={newClient.phone}
                     onChange={(e) => handleNewClientChange('phone', e.target.value)}
-                    className="border-gray-300 focus:border-blue-400 focus:ring-blue-400"
+                    className="border-border focus:border-blue-400 focus:ring-blue-400 dark:focus:border-blue-500/40"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700">Email</Label>
+                  <Label htmlFor="email" className="text-foreground">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={newClient.email}
                     onChange={(e) => handleNewClientChange('email', e.target.value)}
-                    className="border-gray-300 focus:border-blue-400 focus:ring-blue-400"
+                    className="border-border focus:border-blue-400 focus:ring-blue-400 dark:focus:border-blue-500/40"
                   />
                 </div>
               </div>

@@ -1,6 +1,6 @@
 // Este arquivo exporta o cliente Supabase configurado em config.ts
 // para manter compatibilidade com importações existentes
 
-import { supabase, supabase_storage, SUPA_TABLES } from './config';
+import { supabase, supabase_storage } from './config';
 
-export { supabase, supabase_storage, SUPA_TABLES };
+export { supabase, supabase_storage };

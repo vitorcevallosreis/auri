@@ -30,8 +30,18 @@ class RealtimeService {
       return this.channels.get(tableName)!
     }
 
+    // UM TÓPICO POR TABELA. O nome do canal é a chave que o supabase-js usa
+    // para reaproveitar canais: com "db-changes" fixo, a segunda tabela
+    // recebia de volta o canal da primeira — já inscrito — e o `.on()` abaixo
+    // caía depois do `subscribe()`. O realtime-js antigo engolia isso; a
+    // partir de 2.112 ele lança "cannot add postgres_changes callbacks for
+    // realtime:db-changes after subscribe()", e como estes contextos montam
+    // no layout, a exceção derrubava a área inteira do profissional.
+    //
+    // O tópico compartilhado também quebrava `unsubscribeFromTable`: cancelar
+    // uma tabela cancelava as assinaturas de todas as outras.
     const channel = supabase
-      .channel("db-changes")
+      .channel(`db-changes:${tableName}`)
       .on(
         // @ts-expect-error pg name
         "postgres_changes",

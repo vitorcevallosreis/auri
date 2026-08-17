@@ -19,11 +19,11 @@ import { Plus, RefreshCw } from 'lucide-react';
 
 // Mapeamento de cores para cada status
 const statusColorMap: Record<string, string> = {
-  scheduled: "bg-blue-100 text-blue-800",     // agendado
-  completed: "bg-green-100 text-green-800",   // concluído
-  cancelled: "bg-red-100 text-red-800",       // cancelado
-  no_show: "bg-gray-100 text-gray-800",       // não compareceu
-  rescheduled: "bg-yellow-100 text-yellow-800" // reagendado
+  scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300",     // agendado
+  completed: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300",   // concluído
+  cancelled: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300",       // cancelado
+  no_show: "bg-muted text-foreground",       // não compareceu
+  rescheduled: "bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300" // reagendado
 };
 
 // Função para obter rótulo legível do status em português
@@ -113,7 +113,7 @@ const AppointmentsPageContent = () => {
       
       {/* Mensagem de Erro */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300">
           <p>Ocorreu um erro ao carregar os agendamentos: {error}</p>
           <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-1" />

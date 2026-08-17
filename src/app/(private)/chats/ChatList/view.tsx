@@ -31,8 +31,8 @@ export default function ChatListView({
         {chats.map((chat, index: number) => (
           <motion.li
             key={index}
-            className={`hover:bg-gray-100 cursor-pointer ${
-              chat.id === selected_chat_windows ? "bg-gray-100" : ""
+            className={`hover:bg-muted cursor-pointer ${
+              chat.id === selected_chat_windows ? "bg-muted" : ""
             }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -68,7 +68,7 @@ export default function ChatListView({
 
                     <div className="flex-1 flex items-center">
                       <div className="flex flex-col justify-center flex-1">
-                        <div className="font-bold text-gray-900 flex items-center gap-2">
+                        <div className="font-bold text-foreground flex items-center gap-2">
                           {chat.contact.name}
                           {chat.channel_name && (
                             <span 
@@ -80,7 +80,7 @@ export default function ChatListView({
                           )}
                         </div>
                         <div
-                          className="text-gray-500 truncate"
+                          className="text-muted-foreground truncate"
                           style={{
                             fontSize: 13,
                           }}
@@ -89,7 +89,7 @@ export default function ChatListView({
                         </div>
                       </div>
 
-                      <div className="flex flex-row items-center gap-2 text-sm text-gray-400">
+                      <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
                         <div>
                           {moment().diff(moment(chat.updated_at), 'hours') >= 24 
                             ? moment(chat.updated_at).format("DD/MM/YYYY") 

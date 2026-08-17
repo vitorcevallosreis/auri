@@ -213,11 +213,11 @@ export default function ChatMessagesView({
       if (label !== lastLabel) {
         elements.push(
           <div key={`sep-${label}-${ts}`} className="flex items-center my-2">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="mx-3 text-[11px] px-2.5 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-gray-600 leading-none">
+            <div className="flex-1 h-px bg-muted" />
+            <span className="mx-3 text-[11px] px-2.5 py-0.5 rounded-full bg-muted border border-border text-muted-foreground leading-none">
               {label}
             </span>
-            <div className="flex-1 h-px bg-gray-200" />
+            <div className="flex-1 h-px bg-muted" />
           </div>
         )
         lastLabel = label
@@ -274,7 +274,7 @@ export default function ChatMessagesView({
               <button
                 onClick={loadMoreMessages}
                 disabled={isLoadingMore}
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {isLoadingMore ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -288,7 +288,7 @@ export default function ChatMessagesView({
           {/* Indicador de carregamento */}
           {isLoadingMore && (
             <div className="flex justify-center py-2">
-              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
             </div>
           )}
           
@@ -313,7 +313,7 @@ export default function ChatMessagesView({
         }}
       >
         <div
-          className="w-3 h-full rounded-full bg-gray-100 dark:bg-gray-800"
+          className="w-3 h-full rounded-full bg-muted dark:bg-gray-800"
           style={{
             opacity: 0.6,
             transition: 'opacity 0.2s',
@@ -348,7 +348,7 @@ export default function ChatMessagesView({
           >
             <button
               onClick={handleScrollToBottom}
-              className="flex items-center justify-center w-10 h-10 bg-primary text-white rounded-full shadow-md hover:bg-primary/90 transition-colors"
+              className="flex items-center justify-center w-10 h-10 bg-primary text-primary-foreground rounded-full shadow-md hover:bg-primary/90 transition-colors"
               aria-label="Rolar para o final"
             >
               <ChevronDown className="w-5 h-5" />

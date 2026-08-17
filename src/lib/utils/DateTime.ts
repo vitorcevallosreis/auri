@@ -29,3 +29,24 @@ export const PromotionTime = (time: string): string => {
 
   return formattedTime.format("HH:mm")
 }
+
+// ---------------------------------------------------------------------------
+// Fuso horário — contrato único entre as telas e as RPCs.
+//
+// As funções de dashboard no banco usam `current_date`, que no Supabase é UTC.
+// Num recorte mensal isso é cosmético; numa tela chamada "Meu Dia" é fatal — às
+// 21h de Brasília o médico veria a agenda de amanhã. Por isso as RPCs de 0021
+// recebem `p_tz`, e a lista de hoje e os agregados usam A MESMA origem de data.
+// ---------------------------------------------------------------------------
+
+/** Fuso do navegador, com o de São Paulo como rede de segurança. */
+export const clientTz = (): string =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo"
+
+/** Data de hoje como "YYYY-MM-DD" no fuso indicado.
+ *
+ *  O locale 'sv-SE' é o atalho consagrado para ISO curto: ele formata como
+ *  ano-mês-dia com zero à esquerda. `toISOString().slice(0,10)` NÃO serve —
+ *  converte para UTC antes e erra o dia nas primeiras e últimas horas. */
+export const todayInTz = (tz: string = clientTz()): string =>
+  new Intl.DateTimeFormat("sv-SE", { timeZone: tz }).format(new Date())

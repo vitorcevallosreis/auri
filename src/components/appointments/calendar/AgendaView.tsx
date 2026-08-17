@@ -24,7 +24,7 @@ export function AgendaView({ appointments, onAppointmentClick }: AgendaViewProps
               return (
                 <div key={date} className="space-y-4">
                   <h3 
-                    className="text-lg font-medium sticky top-0 bg-white py-2 z-10"
+                    className="text-lg font-medium sticky top-0 bg-card py-2 z-10"
                     aria-live="polite"
                   >
                     {isToday ? `Hoje (${format(parseISO(date), "EEEE, dd", { locale: ptBR })})` : formattedDate}

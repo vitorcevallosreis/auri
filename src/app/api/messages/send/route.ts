@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase/server"
+import { getAuthedCompanyId } from "@/lib/auth/tenant"
 
 // Types for request body
 interface SendMessageBody {
@@ -12,6 +13,14 @@ interface SendMessageBody {
 export async function POST(req: Request) {
   try {
     console.log("[api/messages/send] POST reached")
+
+    // Auth/tenant: rota server-only via service role; middleware não protege /api/*.
+    // Identidade vem do JWT (Bearer), não do cookie. Ownership checado abaixo (chat).
+    const callerCompanyId = await getAuthedCompanyId(req)
+    if (!callerCompanyId) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 })
+    }
+
     const body = (await req.json()) as SendMessageBody
     const { chat_id, message_type, content } = body
     console.log("[api/messages/send] payload:", { chat_id, message_type, hasContent: !!content })
@@ -86,22 +95,45 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fetch channel/contact info securely (service role bypasses RLS)
+    // Buscar o chat + contato (service role bypassa RLS). NOTA: o schema novo
+    // (migration 0003) NÃO tem `channel_id`/`remotejid` em myia_chat — tem
+    // `instance_id` (nome da instância Evolution) e `contact_id`. Resolvemos o
+    // canal por instanceWpp = chat.instance_id e o destinatário via o contato.
     const { data: chatData, error: chatErr } = await supabaseServer
       .from("myia_chat")
       .select(
-        `id, company_id, channel_id, channel_name, remotejid, contact_id,
-         channel:channel_id ( id, nome, urlapi, token, instance_id, remoteJid )`
+        `id, company_id, instance_id, channel_name, contact_id,
+         contact:contact_id ( remote_jid, number )`
       )
       .eq("id", chat_id)
       .single()
 
     if (chatErr || !chatData) {
       console.error("[api/messages/send] chat lookup failed", { chat_id, chatErr })
-      // Seguimos sem bloquear o fluxo: ainda inserimos a mensagem e enviamos payload mínimo ao n8n
+      return NextResponse.json({ error: "Chat não encontrado." }, { status: 404 })
+    }
+    // Ownership: o chat tem que ser do tenant do chamador (404 sem vazar existência).
+    if ((chatData as any).company_id !== callerCompanyId) {
+      return NextResponse.json({ error: "Chat não encontrado." }, { status: 404 })
     }
 
-    // Insert the message with initial status (align with DB enum, e.g., PENDING)
+    // Resolver o canal Evolution do chat (bugfix P2.4: antes fazia join por
+    // channel_id inexistente e retornava null).
+    let channel:
+      | { id: string; nome: string | null; urlapi: string | null; token: string | null; instanceWpp: string | null; remoteJid: string | null }
+      | null = null
+    const instanceId = (chatData as any)?.instance_id as string | undefined
+    if (instanceId) {
+      const { data: ch, error: chErr } = await supabaseServer
+        .from("myia_channels")
+        .select('id, nome, urlapi, token, "instanceWpp", "remoteJid"')
+        .eq("instanceWpp", instanceId)
+        .maybeSingle()
+      if (chErr) console.error("[api/messages/send] channel lookup failed", { instanceId, chErr })
+      channel = (ch as any) ?? null
+    }
+
+    // Insert the message with initial status PENDING
     const messageRow = {
       chat_id,
       from_me: true,
@@ -122,41 +154,60 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to create message", details: insertErr?.message || insertErr }, { status: 500 })
     }
 
-    // Fire-and-forget call to n8n webhook to send via WhatsApp API
-    ;(async () => {
-      try {
-        const channel = Array.isArray((chatData as any)?.channel)
-          ? (chatData as any).channel?.[0]
-          : (chatData as any)?.channel
-        const remoteJid = (chatData as any)?.remotejid || channel?.remoteJid || null
+    // Mídia (image/audio/video/document): fora do escopo do P2.4. Guardamos a
+    // mensagem com status PENDING e NÃO chamamos o Evolution ainda.
+    // TODO fase 2: sendMedia (POST {urlapi}/message/sendMedia/{instance}) — depende
+    // da decisão de storage (MinIO vs Supabase Storage).
+    if (message_type !== "text") {
+      return NextResponse.json(
+        { success: true, id: inserted.id, status: inserted.status, note: "media pending (fase 2)" },
+        { status: 202 }
+      )
+    }
 
-        const payload = {
-          message_row_id: inserted.id,
-          chat_id,
-          message_type,
-          content: normalizedContent,
-          channel: channel
-            ? {
-                id: channel.id,
-                nome: channel.nome,
-                urlapi: channel.urlapi,
-                token: channel.token,
-                instance_id: channel.instance_id,
-                remoteJid: channel.remoteJid,
-              }
-            : undefined,
-          contact: remoteJid ? { remote_jid: remoteJid } : undefined,
-          company_id: (chatData as any)?.company_id,
+    // Texto: envio DIRETO ao Evolution API (substitui o antigo webhook n8n).
+    const contactRel = (chatData as any)?.contact
+    const contact = Array.isArray(contactRel) ? contactRel[0] : contactRel
+    const recipientJid: string | null = contact?.remote_jid || channel?.remoteJid || null
+    const number = recipientJid ? String(recipientJid).split("@")[0] : null
+    const text: string = normalizedContent?.conversation || content?.text || ""
+    const baseUrl = channel?.urlapi || process.env.EVOLUTION_API_URL
+    const apikey = channel?.token
+
+    // Fire-and-forget: envia ao Evolution e atualiza o status (SENT/FAILED).
+    ;(async () => {
+      let newStatus = "FAILED"
+      try {
+        if (!channel || !baseUrl || !apikey || !channel.instanceWpp || !number) {
+          console.error("[api/messages/send] envio abortado: config de canal/destinatário incompleta", {
+            hasChannel: !!channel,
+            hasBaseUrl: !!baseUrl,
+            hasApiKey: !!apikey,
+            instanceWpp: channel?.instanceWpp,
+            number,
+          })
+        } else {
+          const url = `${baseUrl.replace(/\/$/, "")}/message/sendText/${channel.instanceWpp}`
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey },
+            body: JSON.stringify({ number, text }),
+          })
+          if (resp.ok) {
+            newStatus = "SENT"
+          } else {
+            const errBody = await resp.text().catch(() => "")
+            console.error("[api/messages/send] Evolution respondeu erro", { status: resp.status, errBody })
+          }
         }
-        await fetch("https://webhooks.sejanexa.com.br/webhook/myia-send-message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
       } catch (err) {
-        // Do not throw to avoid impacting client
-        console.error("[send-message] n8n call failed", err)
+        console.error("[api/messages/send] falha ao chamar Evolution", err)
       }
+      const { error: updErr } = await supabaseServer
+        .from("myia_messages")
+        .update({ status: newStatus })
+        .eq("id", inserted.id)
+      if (updErr) console.error("[api/messages/send] falha ao atualizar status", updErr)
     })()
 
     return NextResponse.json(

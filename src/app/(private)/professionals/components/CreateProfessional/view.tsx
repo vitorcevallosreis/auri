@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Service } from "@/contexts/Services/interfaces"
 import { formatToBRL } from "@/app/(private)/utils/Currency"
 import { Professional } from "@/contexts/Professionals/interfaces"
+import DadosPrescricao from "../DadosPrescricao"
 
 // Componente para selecionar um profissional existente ou criar um novo
 const SelectProfessionalStep = ({ 
@@ -109,7 +110,7 @@ const SelectProfessionalStep = ({
               filteredProfessionals.map((professional) => (
                 <div
                   key={professional.id}
-                  className="p-4 bg-card text-card-foreground rounded-lg mt-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between"
+                  className="p-4 bg-card text-card-foreground rounded-lg mt-4 hover:bg-muted cursor-pointer flex items-center justify-between"
                   onClick={() => selectProfessional(professional)}
                 >
                   <div className="flex items-center gap-3">
@@ -120,7 +121,7 @@ const SelectProfessionalStep = ({
                     />
                     <div>
                       <p className="font-medium">{professional.nome}</p>
-                      <p className="text-sm text-gray-500">{professional.formacao} - {professional.especialidade}</p>
+                      <p className="text-sm text-muted-foreground">{professional.formacao} - {professional.especialidade}</p>
                     </div>
                   </div>
                   <Button size="sm" color="primary" variant="light">
@@ -179,7 +180,7 @@ export default function CreateProfessionalView({
       <CardHeader className="flex flex-col gap-2">
         <div className="flex justify-between items-center w-full">
           <h2 className="text-xl font-semibold">Novo Profissional</h2>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Passo {currentStepIndex + 1} de {formSteps.length}
           </div>
         </div>
@@ -220,7 +221,7 @@ export default function CreateProfessionalView({
           <h3 className="text-lg font-medium">
             {formSteps[currentStepIndex].title}
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             {formSteps[currentStepIndex].description}
           </p>
         </div>
@@ -238,7 +239,7 @@ export default function CreateProfessionalView({
             />
           )}
           {current_step === EnumFormStep.INFO && (
-            <div className="grid grid-rows-3 gap-3">
+            <div className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="Nome do Profissional*"
@@ -284,6 +285,21 @@ export default function CreateProfessionalView({
                   isInvalid={!!errors?.telefone?.message}
                 />
               </div>
+
+              <div className="pt-2 border-t">
+                <DadosPrescricao
+                  valores={{
+                    cpf: watch("cpf"),
+                    data_nascimento: watch("data_nascimento"),
+                    conselho_sigla: watch("conselho_sigla"),
+                    conselho_numero: watch("conselho_numero"),
+                    conselho_uf: watch("conselho_uf"),
+                  }}
+                  onChange={(campo, valor) =>
+                    setValue(campo, valor, { shouldValidate: true })
+                  }
+                />
+              </div>
             </div>
           )}
 
@@ -297,7 +313,7 @@ export default function CreateProfessionalView({
                 <div className="flex justify-between items-center p-4 bg-primary/5 rounded-xl">
                   <div>
                     <h4 className="text-lg font-medium">Adulto</h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Atende pacientes adultos
                     </p>
                   </div>
@@ -321,7 +337,7 @@ export default function CreateProfessionalView({
                 <div className="flex justify-between items-center p-4 bg-primary/5 rounded-xl">
                   <div>
                     <h4 className="text-lg font-medium">Criança</h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Atende pacientes infantis
                     </p>
                   </div>
@@ -345,7 +361,7 @@ export default function CreateProfessionalView({
                 <div className="flex justify-between items-center p-4 bg-primary/5 rounded-xl">
                   <div>
                     <h4 className="text-lg font-medium">Adolescente</h4>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Atende pacientes adolescentes
                     </p>
                   </div>
@@ -396,7 +412,7 @@ export default function CreateProfessionalView({
                 </div>
               ) : (
                 <div className="text-center p-8">
-                  <p className="text-gray-500">
+                  <p className="text-muted-foreground">
                     Nenhum convênio cadastrado. Cadastre convênios na área de
                     configurações da empresa.
                   </p>
@@ -411,7 +427,7 @@ export default function CreateProfessionalView({
                 {specialties?.map((specialty) => (
                   <div
                     key={specialty.id}
-                    className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center p-3 border rounded-lg hover:bg-muted transition-colors"
                   >
                     <Checkbox
                       isSelected={watch("specialties")?.includes(specialty.id)}
@@ -422,7 +438,7 @@ export default function CreateProfessionalView({
                     <div className="ml-2">
                       <div className="font-medium">{specialty.name}</div>
                       {specialty.description && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           {specialty.description}
                         </div>
                       )}
@@ -460,7 +476,7 @@ export default function CreateProfessionalView({
             <div className="space-y-6">
               <div className="relative">
                 <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
                   size={18}
                 />
                 <Input
@@ -484,7 +500,7 @@ export default function CreateProfessionalView({
                           <h4 className="font-medium text-base">
                             {service.name}
                           </h4>
-                          <p className="text-sm text-gray-500 line-clamp-2">
+                          <p className="text-sm text-muted-foreground line-clamp-2">
                             {service.description || "Sem descrição"}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
@@ -673,7 +689,7 @@ export default function CreateProfessionalView({
                                   <Plus size={14} />
                                 </Button>
                               </>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-sm text-muted-foreground">
                                 pessoas
                               </span>
                             </div>
@@ -684,7 +700,7 @@ export default function CreateProfessionalView({
                 </div>
               ) : (
                 <div className="text-center p-8">
-                  <p className="text-gray-500">
+                  <p className="text-muted-foreground">
                     Nenhum serviço cadastrado. Cadastre serviços na área
                     correspondente antes de continuar.
                   </p>

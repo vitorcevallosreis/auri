@@ -1,0 +1,58 @@
+# auri-agent-worker — Plano 3, P3.2.
+#
+# Consome a fila de turnos do agente (myia_agent_jobs). Container separado do
+# app porque a Meta exige ack do webhook em ~5s e um turno leva segundos; e
+# porque deploy do painel não pode derrubar conversa em andamento.
+#
+# Sem etapa de build: `node --experimental-strip-types` executa TypeScript
+# direto. Por isso o diretório worker/ evita recursos de TS que exijam
+# transformação (enum, parameter property, decorator).
+#
+# SEGREDOS: este Dockerfile não contém nenhum valor. Envs de runtime entram
+# via `docker run --env-file`.
+
+FROM node:22-alpine AS deps
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat
+
+# O worker usa @supabase/supabase-js, que está no package.json do app. Instalar
+# a partir do lockfile mantém a MESMA versão que o app — divergência de client
+# entre os dois seria uma fonte de bug difícil de enxergar.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 worker
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --chown=worker:nodejs package.json ./
+COPY --chown=worker:nodejs worker ./worker
+
+# Os adaptadores da escuta (0027) são COMPARTILHADOS com o app: transcrever e
+# redigir têm que se comportar igual nos dois lados, e duplicar o código aqui
+# seria garantir que um dia divergissem. `worker/escuta.mts` os importa por
+# caminho relativo — sem esta cópia, o import só falha em produção, no primeiro
+# áudio que chega.
+#
+# Só `lib/escuta` entra. O resto de `src/` depende do alias `@/` e do bundler
+# do Next, que este worker não tem. Isso funciona porque a única dependência
+# desses dois arquivos para fora é `import type`, que o strip-types apaga.
+COPY --chown=worker:nodejs src/lib/escuta ./src/lib/escuta
+
+# O worker é autocontido: tem o próprio client Supabase (worker/supabase.mts).
+# Importar o do app faria o Node carregar um .ts que ele classifica como
+# CommonJS, funcionando só por reparse — dependência frágil para subir em
+# produção.
+
+USER worker
+
+# --experimental-strip-types: Node 22 executa .mts/.ts apagando as anotações de
+# tipo, sem transpilador no caminho.
+CMD ["node", "--experimental-strip-types", "worker/index.mts"]

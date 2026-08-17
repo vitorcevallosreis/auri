@@ -39,7 +39,7 @@ export default function ContactInfoView({
               </div>
 
               <div className="text-center text-2xl">{chat?.contact?.name}</div>
-              <div className="text-center text-gray-400">
+              <div className="text-center text-muted-foreground">
                 {chat?.contact?.number}
               </div>
             </div>

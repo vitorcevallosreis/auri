@@ -14,9 +14,9 @@ export default function ChatWindowView({
   return (
     <div className="w-full h-full min-h-0 flex flex-col overflow-hidden relative">
       {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white bg-opacity-85 z-50">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-card bg-opacity-85 z-50">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-sm font-medium text-gray-700">
+          <p className="mt-4 text-sm font-medium text-foreground">
             Carregando mensagens...
           </p>
         </div>

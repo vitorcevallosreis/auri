@@ -19,7 +19,7 @@ export default function StickerMessageView({
         radius="none"
       />
 
-      <MessageMetadata message={message} bgColor="text-gray-400 mt-1" />
+      <MessageMetadata message={message} bgColor="text-muted-foreground mt-1" />
     </React.Fragment>
   )
 }

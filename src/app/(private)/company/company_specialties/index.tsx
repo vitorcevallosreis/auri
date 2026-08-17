@@ -116,20 +116,20 @@ export default function CompanySpecialties() {
   }
 
   return (
-    <Card className="bg-white border-0 shadow-sm h-fit">
+    <Card className="bg-card border-0 shadow-sm h-fit">
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-teal-50 rounded-lg">
-            <Stethoscope className="h-5 w-5 text-[#00897B]" />
+          <div className="p-2 bg-teal-50 rounded-lg dark:bg-teal-500/10">
+            <Stethoscope className="h-5 w-5 text-primary" />
           </div>
-          <CardTitle className="text-lg font-semibold text-gray-900">Especialidades</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Especialidades</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex justify-between items-center mb-4">
-          <p className="text-sm text-gray-600">Adicione as especialidades médicas oferecidas</p>
+          <p className="text-sm text-muted-foreground">Adicione as especialidades médicas oferecidas</p>
           <Button 
-            className="bg-[#00897B] hover:bg-[#007366] text-white font-medium py-1.5 px-3 rounded-md text-sm transition-colors"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-1.5 px-3 rounded-md text-sm transition-colors"
             size="sm"
             startContent={<Plus size={14} />}
             onClick={handleOpenCreate}
@@ -142,21 +142,21 @@ export default function CompanySpecialties() {
         {/* Lista de especialidades */}
         <div className="space-y-2">
           {companySpecialties.length === 0 ? (
-            <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <p className="text-sm text-gray-500">Clínica Geral</p>
-              <p className="text-sm text-gray-500 mt-2">Cardiologia</p>
-              <p className="text-sm text-gray-500 mt-2">Dermatologia</p>
+            <div className="bg-muted rounded-lg p-4 text-center">
+              <p className="text-sm text-muted-foreground">Clínica Geral</p>
+              <p className="text-sm text-muted-foreground mt-2">Cardiologia</p>
+              <p className="text-sm text-muted-foreground mt-2">Dermatologia</p>
             </div>
           ) : (
             companySpecialties.map((specialty) => (
               <div 
                 key={specialty.id} 
-                className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex justify-between items-center p-3 bg-muted rounded-lg hover:bg-muted transition-colors"
               >
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{specialty.name}</p>
+                  <p className="text-sm font-medium text-foreground">{specialty.name}</p>
                   {specialty.description && (
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{specialty.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{specialty.description}</p>
                   )}
                 </div>
                 <div className="flex gap-1 ml-4">
@@ -164,19 +164,19 @@ export default function CompanySpecialties() {
                     isIconOnly 
                     size="sm" 
                     variant="light" 
-                    className="h-8 w-8 hover:bg-gray-200"
+                    className="h-8 w-8 hover:bg-muted"
                     onClick={() => handleOpenEdit(specialty)}
                   >
-                    <Edit size={14} color="#00897B" />
+                    <Edit size={14} className="text-primary" />
                   </Button>
                   <Button 
                     isIconOnly 
                     size="sm" 
                     variant="light" 
-                    className="h-8 w-8 hover:bg-red-100 text-[#00897B]"
+                    className="h-8 w-8 text-primary hover:bg-destructive/10"
                     onClick={() => confirmDelete(specialty)}
                   >
-                    <Trash size={14} color="#00897B" />
+                    <Trash size={14} className="text-primary" />
                   </Button>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function CompanySpecialties() {
           {(onClose) => (
             <>
               <ModalHeader className="border-b pb-3">
-                <span className="text-gray-900 font-medium">
+                <span className="text-foreground font-medium">
                   {formMode === "create" ? "Nova Especialidade" : "Editar Especialidade"}
                 </span>
               </ModalHeader>
@@ -207,8 +207,8 @@ export default function CompanySpecialties() {
                     isInvalid={!isValid.name}
                     errorMessage={!isValid.name ? "O nome é obrigatório" : ""}
                     classNames={{
-                      label: "text-sm font-medium text-gray-700 mb-1",
-                      input: "border-gray-200 focus:border-[#00897B]",
+                      label: "text-sm font-medium text-foreground mb-1",
+                      input: "border-border focus:border-primary",
                     }}
                   />
                   <Textarea
@@ -218,8 +218,8 @@ export default function CompanySpecialties() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     classNames={{
-                      label: "text-sm font-medium text-gray-700 mb-1",
-                      input: "border-gray-200 focus:border-[#00897B] resize-none",
+                      label: "text-sm font-medium text-foreground mb-1",
+                      input: "border-border focus:border-primary resize-none",
                     }}
                     minRows={3}
                   />
@@ -228,13 +228,13 @@ export default function CompanySpecialties() {
               <ModalFooter className="border-t pt-3">
                 <Button 
                   variant="light" 
-                  className="text-gray-700 hover:bg-gray-100" 
+                  className="text-foreground hover:bg-muted" 
                   onPress={onClose}
                 >
                   Cancelar
                 </Button>
                 <Button 
-                  className="bg-[#00897B] hover:bg-[#007366] text-white" 
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground" 
                   onPress={handleSave}
                   isLoading={isLoading}
                 >
@@ -252,27 +252,27 @@ export default function CompanySpecialties() {
           {(onClose) => (
             <>
               <ModalHeader className="border-b pb-3">
-                <span className="text-gray-900 font-medium">Confirmar Exclusão</span>
+                <span className="text-foreground font-medium">Confirmar Exclusão</span>
               </ModalHeader>
               <ModalBody className="py-4">
-                <p className="text-gray-800">
+                <p className="text-foreground">
                   Tem certeza que deseja excluir a especialidade{" "}
                   <strong>{deleteItem?.name}</strong>?
                 </p>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-muted-foreground mt-2">
                   Esta ação não pode ser desfeita.
                 </p>
               </ModalBody>
               <ModalFooter className="border-t pt-3">
                 <Button 
                   variant="light" 
-                  className="text-gray-700 hover:bg-gray-100" 
+                  className="text-foreground hover:bg-muted" 
                   onPress={onClose}
                 >
                   Cancelar
                 </Button>
                 <Button 
-                  className="bg-[#00897B] hover:bg-[#007366] text-white" 
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground" 
                   onPress={handleDelete}
                   isLoading={isLoading}
                 >

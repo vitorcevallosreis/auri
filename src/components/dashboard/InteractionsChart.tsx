@@ -46,9 +46,9 @@ export function InteractionsChart({
   fillArea = false,
   showLegend = false 
 }: InteractionsChartProps) {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
+
   // Only render chart after mounting to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
@@ -56,20 +56,56 @@ export function InteractionsChart({
 
   // Ensure data is always an array
   const safeData = Array.isArray(data) ? data : [];
-  const isDark = mounted && theme === 'dark';
-  
+
+  // `resolvedTheme`, não `theme`: com o tema em "system", `theme` vale a
+  // string "system" e a comparação com 'dark' dá falso mesmo no escuro —
+  // eixos e tooltip sairiam com as cores do claro.
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  // O Chart.js pinta em <canvas>, onde `hsl(var(--primary))` NÃO resolve — o
+  // canvas não participa da cascata do CSS. Então lemos o valor cru do token
+  // ("189 44% 12%") e montamos a cor aqui, para o gráfico continuar preso ao
+  // design system em vez de ter a cor chumbada.
+  //
+  // A LEITURA PRECISA ACONTECER DEPOIS QUE A CLASSE DE TEMA ESTÁ NO <html>.
+  // Antes isto era feito durante o render: o React re-renderizava ao mudar o
+  // tema, mas o next-themes só troca a classe no efeito dele, DEPOIS. O
+  // getComputedStyle pegava o valor antigo e o gráfico ficava um tema
+  // atrasado — no escuro, linha #11282C sobre card #11282C, invisível.
+  //
+  // O MutationObserver resolve sem depender da ordem dos efeitos: ele dispara
+  // exatamente quando o atributo muda, que é quando a cor nova já vale.
+  const [tokenPrimary, setTokenPrimary] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ler = () =>
+      setTokenPrimary(
+        getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || null
+      );
+    ler();
+    const obs = new MutationObserver(ler);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    return () => obs.disconnect();
+  }, [resolvedTheme]);
+
+  const brand = (alpha?: number) => {
+    const fallback = '189 44% 12%'; // #11282C — usado no SSR, antes de montar
+    const hsl = tokenPrimary ?? fallback;
+    return alpha === undefined ? `hsl(${hsl})` : `hsl(${hsl} / ${alpha})`;
+  };
+
   const chartData = {
     labels,
     datasets: [
       {
         label: title,
         data: safeData,
-        borderColor: "#00897B",
-        backgroundColor: fillArea 
-          ? isDark ? "rgba(0, 137, 123, 0.2)" : "rgba(0, 137, 123, 0.1)" 
-          : type === 'bar' 
-            ? "#00897B" 
-            : isDark ? "rgba(0, 137, 123, 0.2)" : "rgba(0, 137, 123, 0.1)",
+        borderColor: brand(),
+        backgroundColor: fillArea
+          ? brand(isDark ? 0.2 : 0.1)
+          : type === 'bar'
+            ? brand()
+            : brand(isDark ? 0.2 : 0.1),
         tension: 0.4,
         fill: fillArea,
         borderWidth: type === 'line' ? 2 : 0,

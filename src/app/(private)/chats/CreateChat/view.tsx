@@ -39,12 +39,12 @@ export default function CreateChatView({
     <React.Fragment>
       <div
         onClick={onOpen}
-        className="flex items-center justify-center px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-gray-50/80 group"
+        className="flex items-center justify-center px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-muted/80 group"
       >
-        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 mr-2">
+        <span className="text-sm font-medium text-foreground group-hover:text-foreground mr-2">
           Novo Chat
         </span>
-        <div className="text-gray-400 group-hover:text-primary transition-colors duration-200">
+        <div className="text-muted-foreground group-hover:text-primary transition-colors duration-200">
           <MessageSquareDiff size={16} />
         </div>
       </div>
@@ -149,11 +149,7 @@ export default function CreateChatView({
                               <SelectItem
                                 key={country.key}
                                 startContent={
-                                  <Avatar
-                                    alt="Argentina"
-                                    className="w-6 h-6 rounded-full"
-                                    src={country.icon}
-                                  />
+                                  <span className="text-lg leading-none" aria-hidden="true">{country.icon}</span>
                                 }
                               >
                                 {country.label}

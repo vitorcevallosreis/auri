@@ -62,11 +62,11 @@ import {
 
 // Cores para os status de consultas médicas
 const statusColors = {
-  scheduled: { bg: 'bg-teal-50', text: 'text-[#00897B]', border: 'border-teal-200', badgeBg: 'bg-teal-100' },
-  completed: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', badgeBg: 'bg-green-100' },
-  cancelled: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', badgeBg: 'bg-red-100' },
-  no_show: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', badgeBg: 'bg-yellow-100' },
-  rescheduled: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', badgeBg: 'bg-purple-100' }
+  scheduled: { bg: 'bg-teal-50 dark:bg-teal-500/10', text: 'text-primary', border: 'border-teal-200 dark:border-teal-500/30', badgeBg: 'bg-teal-100 dark:bg-teal-500/15' },
+  completed: { bg: 'bg-green-50 dark:bg-green-500/10', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-500/30', badgeBg: 'bg-green-100 dark:bg-green-500/15' },
+  cancelled: { bg: 'bg-red-50 dark:bg-red-500/10', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-500/30', badgeBg: 'bg-red-100 dark:bg-red-500/15' },
+  no_show: { bg: 'bg-yellow-50 dark:bg-yellow-500/10', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-500/30', badgeBg: 'bg-yellow-100 dark:bg-yellow-500/15' },
+  rescheduled: { bg: 'bg-purple-50 dark:bg-purple-500/10', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-500/30', badgeBg: 'bg-purple-100 dark:bg-purple-500/15' }
 };
 
 // Mapeamento de labels para status das consultas
@@ -214,7 +214,7 @@ const AppointmentsPageContent = () => {
   
   // Função para encontrar a cor correspondente ao status
   const getStatusColor = (status: AppointmentStatus) => {
-    return statusColors[status] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', badgeBg: 'bg-gray-100' };
+    return statusColors[status] || { bg: 'bg-muted', text: 'text-foreground', border: 'border-border', badgeBg: 'bg-muted' };
   };
   
   // Função para obter o label do status
@@ -228,22 +228,22 @@ const AppointmentsPageContent = () => {
       {/* Cabeçalho moderno com ações primárias */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-3 pb-4 border-b">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground dark:text-gray-50">
             Agenda Inteligente
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
             {getHeaderTitle()} • Automatizada com Ana IA
           </p>
         </div>
         
         <div className="flex items-center gap-2 mt-3 md:mt-0">
-          <div className="flex items-center rounded-md border bg-white dark:bg-gray-800 p-1 shadow-sm">
+          <div className="flex items-center rounded-md border bg-card dark:bg-gray-800 p-1 shadow-sm">
             <Button 
               variant="ghost" 
               size="sm" 
               className={cn(
                 "rounded-sm",
-                calendarView === "day" && "bg-gray-100 dark:bg-gray-700"
+                calendarView === "day" && "bg-muted dark:bg-gray-700"
               )}
               onClick={() => setCalendarView("day")}
             >
@@ -254,7 +254,7 @@ const AppointmentsPageContent = () => {
               size="sm" 
               className={cn(
                 "rounded-sm",
-                calendarView === "week" && "bg-gray-100 dark:bg-gray-700"
+                calendarView === "week" && "bg-muted dark:bg-gray-700"
               )}
               onClick={() => setCalendarView("week")}
             >
@@ -265,7 +265,7 @@ const AppointmentsPageContent = () => {
               size="sm" 
               className={cn(
                 "rounded-sm",
-                calendarView === "month" && "bg-gray-100 dark:bg-gray-700"
+                calendarView === "month" && "bg-muted dark:bg-gray-700"
               )}
               onClick={() => setCalendarView("month")}
             >
@@ -276,7 +276,7 @@ const AppointmentsPageContent = () => {
               size="sm" 
               className={cn(
                 "rounded-sm",
-                calendarView === "agenda" && "bg-gray-100 dark:bg-gray-700"
+                calendarView === "agenda" && "bg-muted dark:bg-gray-700"
               )}
               onClick={() => setCalendarView("agenda")}
             >
@@ -288,7 +288,7 @@ const AppointmentsPageContent = () => {
             variant="outline" 
             size="icon" 
             onClick={() => setShowFilters(!showFilters)}
-            className={cn(showFilters && "bg-gray-100 dark:bg-gray-800")}
+            className={cn(showFilters && "bg-muted dark:bg-gray-800")}
           >
             <Filter className="h-4 w-4" />
           </Button>
@@ -297,7 +297,7 @@ const AppointmentsPageContent = () => {
             variant="default" 
             size="sm" 
             onClick={handleNewAppointment}
-            className="gap-1 bg-[#00897B] hover:bg-[#00796B] text-white"
+            className="gap-1 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Plus className="h-4 w-4" />
             Nova Consulta
@@ -308,24 +308,24 @@ const AppointmentsPageContent = () => {
       {/* Barra de navegação e ferramentas */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPrevious} className="text-[#00897B] border-[#00897B] hover:bg-[#E0F2F1] hover:text-[#00796B]">
+          <Button variant="outline" size="icon" onClick={goToPrevious} className="text-primary border-primary hover:bg-accent/20 hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button 
             variant="outline" 
-            className="font-medium text-[#00897B] border-[#00897B] hover:bg-[#E0F2F1] hover:text-[#00796B]" 
+            className="font-medium text-primary border-primary hover:bg-accent/20 hover:text-foreground" 
             onClick={goToToday}
           >
             Hoje
           </Button>
-          <Button variant="outline" size="icon" onClick={goToNext} className="text-[#00897B] border-[#00897B] hover:bg-[#E0F2F1] hover:text-[#00796B]">
+          <Button variant="outline" size="icon" onClick={goToNext} className="text-primary border-primary hover:bg-accent/20 hover:text-foreground">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
         
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar agendamentos"
               className="pl-8 w-48 md:w-64 h-9"
@@ -334,7 +334,7 @@ const AppointmentsPageContent = () => {
             />
           </div>
           
-          <Button variant="outline" size="sm" className="h-9 text-[#00897B] border-[#00897B] hover:bg-[#E0F2F1] hover:text-[#00796B]" onClick={handleRefresh}>
+          <Button variant="outline" size="sm" className="h-9 text-primary border-primary hover:bg-accent/20 hover:text-foreground" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -345,7 +345,7 @@ const AppointmentsPageContent = () => {
         <div className="w-full sm:w-1/2">
           <div className="flex flex-col space-y-1.5">
             <Label htmlFor="professional-filter" className="flex items-center text-sm font-medium">
-              <User className="h-4 w-4 mr-2 text-[#00897B]" />
+              <User className="h-4 w-4 mr-2 text-primary" />
               Profissional
             </Label>
             <Select 
@@ -365,7 +365,7 @@ const AppointmentsPageContent = () => {
                     <div>
                       <div className="font-medium">{professional.nome}</div>
                       {professional.formacao && (
-                        <div className="text-xs text-gray-500">{professional.formacao}</div>
+                        <div className="text-xs text-muted-foreground">{professional.formacao}</div>
                       )}
                     </div>
                   </SelectItem>
@@ -378,7 +378,7 @@ const AppointmentsPageContent = () => {
         <div className="w-full sm:w-1/2">
           <div className="flex flex-col space-y-1.5">
             <Label htmlFor="service-filter" className="flex items-center text-sm font-medium">
-              <Bookmark className="h-4 w-4 mr-2 text-[#00897B]" />
+              <Bookmark className="h-4 w-4 mr-2 text-primary" />
               Serviço
             </Label>
             <Select 
@@ -412,16 +412,16 @@ const AppointmentsPageContent = () => {
             animate={{ opacity: 1, height: "auto", overflow: "visible" }}
             exit={{ opacity: 0, height: 0, overflow: "hidden" }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden rounded-lg border bg-white dark:bg-gray-800 shadow-sm"
+            className="overflow-hidden rounded-lg border bg-card dark:bg-gray-800 shadow-sm"
           >
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {/* Filtro: Profissional */}
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-medium text-gray-500">Profissional</label>
+                  <label className="text-xs font-medium text-muted-foreground">Profissional</label>
                 </div>
                 <select 
-                  className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950"
+                  className="w-full h-9 rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950"
                   value={filters.professional_id as string || ''}
                   onChange={(e) => handleFilterChange('professional_id', e.target.value)}
                 >
@@ -437,10 +437,10 @@ const AppointmentsPageContent = () => {
               {/* Filtro: Serviço */}
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-medium text-[#00897B]">Serviço</label>
+                  <label className="text-xs font-medium text-primary">Serviço</label>
                 </div>
                 <select 
-                  className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950"
+                  className="w-full h-9 rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950"
                   value={filters.service_id as string || ''}
                   onChange={(e) => handleFilterChange('service_id', e.target.value)}
                 >
@@ -456,10 +456,10 @@ const AppointmentsPageContent = () => {
               {/* Filtro: Status */}
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-medium text-[#00897B]">Status</label>
+                  <label className="text-xs font-medium text-primary">Status</label>
                 </div>
                 <select 
-                  className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950"
+                  className="w-full h-9 rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950"
                   value={filters.status as string || ''}
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                 >
@@ -478,7 +478,7 @@ const AppointmentsPageContent = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={clearFilters} 
-                  className="text-xs h-9 w-full text-[#00897B] border-[#00897B] hover:bg-[#E0F2F1] hover:text-[#00796B]"
+                  className="text-xs h-9 w-full text-primary border-primary hover:bg-accent/20 hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5 mr-1.5" />
                   Limpar filtros
@@ -490,7 +490,7 @@ const AppointmentsPageContent = () => {
       </AnimatePresence>
       
       {/* Exibição do calendário */}
-      <div className="min-h-[calc(100vh-16rem)] bg-white dark:bg-gray-800 rounded-lg border shadow-sm overflow-hidden">
+      <div className="min-h-[calc(100vh-16rem)] bg-card dark:bg-gray-800 rounded-lg border shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="h-full w-full flex items-center justify-center p-12">
             <div className="space-y-4 w-full max-w-md">
@@ -503,13 +503,13 @@ const AppointmentsPageContent = () => {
           </div>
         ) : error ? (
           <div className="h-full w-full flex items-center justify-center p-12">
-            <div className="text-center max-w-md mx-auto p-6 rounded-lg bg-red-50 border border-red-100">
+            <div className="text-center max-w-md mx-auto p-6 rounded-lg bg-red-50 border border-red-100 dark:bg-red-500/10">
               <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-red-700 mb-2">Erro ao carregar agendamentos</h3>
-              <p className="text-red-600 mb-4">Ocorreu um problema ao buscar os dados. Por favor, tente novamente.</p>
+              <h3 className="text-lg font-semibold text-red-700 mb-2 dark:text-red-300">Erro ao carregar agendamentos</h3>
+              <p className="text-red-600 mb-4 dark:text-red-400">Ocorreu um problema ao buscar os dados. Por favor, tente novamente.</p>
               <Button 
                 variant="outline" 
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" 
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-500/10 dark:hover:text-red-300" 
                 onClick={handleRefresh}
               >
                 <RefreshCw className="h-4 w-4 mr-2" /> Tentar novamente

@@ -1,15 +1,20 @@
 import { createClient } from "@supabase/supabase-js"
+import { supabasePublishableKey, supabaseUrl } from "./keys"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// A chave vem de ./keys, que dá precedência ao formato novo
+// (NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) e cai para o legado
+// (NEXT_PUBLIC_SUPABASE_ANON_KEY) enquanto a migração não termina.
+const supabaseAnonKey = supabasePublishableKey
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Credenciais do Supabase não encontradas nas variáveis de ambiente")
+  throw new Error(
+    "Credenciais do Supabase não encontradas: defina NEXT_PUBLIC_SUPABASE_URL e uma de NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  )
 }
 
 console.log("Inicializando Supabase com URL:", supabaseUrl);
 
-// Criar o cliente principal do Supabase com schema "nexa"
+// Cliente principal do Supabase (schema public)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -38,16 +43,3 @@ export const supabase_storage = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 })
-
-// Configurações globais - tabelas e schemas
-export const SUPA_TABLES = {
-  table_myia_mensagens: "myia_mensagens",
-  table_myia_messages: "myia_messages",
-  table_myia_assistants: "myia_assistants",
-  table_myia_settings_assistants: "myia_settings_assistants",
-  table_myia_settings_company: "myia_settings_company",
-  table_myia_settings_personal: "myia_settings_personal",
-  table_myia_default_prompts: "myia_default_prompts",
-  table_myia_files: "myia_files",
-  table_myia_channels: "myia_channels",
-}

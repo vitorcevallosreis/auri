@@ -96,11 +96,11 @@ export const AppointmentDetails = ({
 
   const getStatusColor = (status: string) => {
     const colorMap: Record<string, string> = {
-      scheduled: 'bg-blue-100 text-blue-800 border-blue-300',
-      completed: 'bg-green-100 text-green-800 border-green-300',
-      cancelled: 'bg-red-100 text-red-800 border-red-300',
-      no_show: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      rescheduled: 'bg-purple-100 text-purple-800 border-purple-300'
+      scheduled: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30',
+      completed: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30',
+      cancelled: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30',
+      no_show: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/30',
+      rescheduled: 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30'
     };
     return colorMap[status] || '';
   };
@@ -129,14 +129,14 @@ export const AppointmentDetails = ({
               
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
                     {format(parseISO(appointment.appointment_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </span>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-gray-500" />
+                  <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">
                     {appointment.start_time.substring(0, 5)} - {appointment.end_time.substring(0, 5)}
                   </span>
@@ -146,17 +146,17 @@ export const AppointmentDetails = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 border rounded-lg">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Profissional</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Profissional</h3>
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-gray-500" />
+                  <User className="h-4 w-4 text-muted-foreground" />
                   <span>{appointment.professional_name}</span>
                 </div>
               </div>
               
               <div className="p-4 border rounded-lg">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Serviço</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Serviço</h3>
                 <div className="flex items-center gap-2">
-                  <Bookmark className="h-4 w-4 text-gray-500" />
+                  <Bookmark className="h-4 w-4 text-muted-foreground" />
                   <span>{appointment.service_name}</span>
                 </div>
               </div>
@@ -166,9 +166,9 @@ export const AppointmentDetails = ({
               <div className="grid grid-cols-2 gap-4">
                 {appointment.location && (
                   <div className="p-4 border rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Local</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Local</h3>
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span>{appointment.location}</span>
                     </div>
                   </div>
@@ -176,9 +176,9 @@ export const AppointmentDetails = ({
                 
                 {appointment.notes && (
                   <div className="p-4 border rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Observações</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Observações</h3>
                     <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-gray-500 mt-0.5" />
+                      <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <span>{appointment.notes}</span>
                     </div>
                   </div>
@@ -190,9 +190,9 @@ export const AppointmentDetails = ({
               <div className="grid grid-cols-2 gap-4">
                 {appointment.cliente_telefone && (
                   <div className="p-4 border rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Telefone</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Telefone</h3>
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-500" />
+                      <Phone className="h-4 w-4 text-muted-foreground" />
                       <span>{appointment.cliente_telefone}</span>
                     </div>
                   </div>
@@ -200,9 +200,9 @@ export const AppointmentDetails = ({
                 
                 {appointment.cliente_email && (
                   <div className="p-4 border rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Email</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Email</h3>
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-500" />
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       <span>{appointment.cliente_email}</span>
                     </div>
                   </div>
@@ -214,9 +214,9 @@ export const AppointmentDetails = ({
               <div className="grid grid-cols-2 gap-4">
                 {appointment.convenio_usado && (
                   <div className="p-4 border rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Convênio</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Convênio</h3>
                     <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-gray-500" />
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
                       <span>{appointment.convenio_usado}</span>
                     </div>
                   </div>
@@ -224,9 +224,9 @@ export const AppointmentDetails = ({
                 
                 {appointment.valor_cobrado !== null && (
                   <div className="p-4 border rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Valor</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Valor</h3>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-500" />
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <span>
                         {new Intl.NumberFormat('pt-BR', {
                           style: 'currency',

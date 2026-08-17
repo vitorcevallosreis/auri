@@ -19,11 +19,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const statusColorMap: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200',
-  completed: 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200',
-  cancelled: 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200',
-  no_show: 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200',
-  rescheduled: 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200'
+  scheduled: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30 dark:hover:bg-blue-500/25',
+  completed: 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30 dark:hover:bg-green-500/25',
+  cancelled: 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30 dark:hover:bg-red-500/25',
+  no_show: 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/30 dark:hover:bg-yellow-500/25',
+  rescheduled: 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30 dark:hover:bg-purple-500/25'
 };
 
 interface WeeklyCalendarProps {
@@ -91,7 +91,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
   };
 
   return (
-    <div className="border rounded-lg shadow-sm bg-white">
+    <div className="border rounded-lg shadow-sm bg-card">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-xl font-semibold">Agenda Semanal</h2>
         <div className="flex gap-2">
@@ -125,19 +125,19 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
             key={index} 
             className={cn(
               "text-center py-3 font-medium px-2 border-r last:border-r-0",
-              isToday(day) && "bg-blue-50"
+              isToday(day) && "bg-blue-50 dark:bg-blue-500/10"
             )}
           >
-            <div className="text-sm text-gray-500 uppercase">
+            <div className="text-sm text-muted-foreground uppercase">
               {format(day, 'EEE', { locale: ptBR })}
             </div>
             <div className={cn(
               "mt-1 text-xl",
-              isToday(day) && "text-blue-600 font-bold"
+              isToday(day) && "text-blue-600 font-bold dark:text-blue-400"
             )}>
               {format(day, 'd')}
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-muted-foreground">
               {format(day, 'MMM', { locale: ptBR })}
             </div>
           </div>
@@ -152,7 +152,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
               key={index} 
               className={cn(
                 "border-r last:border-r-0",
-                isToday(day) && "bg-blue-50"
+                isToday(day) && "bg-blue-50 dark:bg-blue-500/10"
               )}
             >
               <ScrollArea className="h-[500px]">
@@ -162,7 +162,7 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                     </div>
                   ) : dayAppointments.length === 0 ? (
-                    <div className="text-center py-4 text-gray-400 text-sm">
+                    <div className="text-center py-4 text-muted-foreground text-sm">
                       Sem agendamentos
                     </div>
                   ) : (
@@ -185,21 +185,21 @@ export const WeeklyCalendar = ({ onAppointmentClick, currentDate: propCurrentDat
                               <div className="font-medium mb-1 truncate">
                                 {appointment.cliente_nome || "Cliente não informado"}
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-gray-600 mb-1 truncate">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1 truncate">
                                 <User className="h-3 w-3" /> 
                                 {appointment.professional_name}
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-gray-600 truncate">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
                                 <Bookmark className="h-3 w-3" /> 
                                 {appointment.service_name}
                               </div>
                               <div className="mt-1">
                                 <Badge variant="outline" className={cn("text-xs py-0 px-1", 
-                                  appointment.status === 'scheduled' && "bg-blue-50 border-blue-200 text-blue-700",
-                                  appointment.status === 'completed' && "bg-green-50 border-green-200 text-green-700",
-                                  appointment.status === 'cancelled' && "bg-red-50 border-red-200 text-red-700",
-                                  appointment.status === 'no_show' && "bg-yellow-50 border-yellow-200 text-yellow-700",
-                                  appointment.status === 'rescheduled' && "bg-purple-50 border-purple-200 text-purple-700"
+                                  appointment.status === 'scheduled' && "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-300",
+                                  appointment.status === 'completed' && "bg-green-50 border-green-200 text-green-700 dark:bg-green-500/10 dark:border-green-500/30 dark:text-green-300",
+                                  appointment.status === 'cancelled' && "bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300",
+                                  appointment.status === 'no_show' && "bg-yellow-50 border-yellow-200 text-yellow-700 dark:bg-yellow-500/10 dark:border-yellow-500/30 dark:text-yellow-300",
+                                  appointment.status === 'rescheduled' && "bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-500/10 dark:border-purple-500/30 dark:text-purple-300"
                                 )}>
                                   {getStatusLabel(appointment.status)}
                                 </Badge>

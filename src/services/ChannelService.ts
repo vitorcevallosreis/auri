@@ -1,150 +1,85 @@
 import { Channel } from "@/contexts/Assistants/interfaces";
+import { supabase } from "@/lib/supabase/config";
 
-// Usar a URL fixa do webhook para garantir que estamos usando o valor correto
-const WEBHOOK_BASE_URL = "https://webhooks.sejanexa.com.br";
+// Cliente fino das rotas Next de gestão de instância do Evolution (Plano 2 — P2.5).
+// Substitui o antigo POST para o webhook n8n `gerenciar-channel`. Toda a lógica
+// (chamar o Evolution com a API key GLOBAL, persistir em myia_channels) mora no
+// servidor em `/api/whatsapp/instance`; aqui só disparamos a ação e devolvemos a
+// resposta já parseada para o contexto/UI.
 
-export interface ChannelWebhookPayload {
-  assistent_id: string;
-  nome: string;
-  evento: "criar" | "open" | "parar" | "excluir";
-  empresaId: string;
-  // Novo campo para informar o tipo de API do canal
-  tipoApi?: "Evolution" | "Waha";
+const INSTANCE_ROUTE = "/api/whatsapp/instance";
+
+type InstanceAction = "create" | "connect" | "logout" | "delete";
+
+export interface InstanceResponse {
+  ok: boolean;
+  channel?: Channel;
+  qrcode64?: string | null;
+  pairing_code?: string | null;
+  status?: string | null;
+  deleted?: boolean;
+  error?: string | null;
+  warning?: string | null;
 }
 
 export class ChannelService {
-  /**
-   * Envia uma requisição para o webhook de gerenciamento de canais
-   * @param payload Dados para o webhook
-   * @returns Resposta da API
-   */
-  private static async sendWebhookRequest(payload: ChannelWebhookPayload): Promise<any> {
-    console.log("Enviando requisição para o webhook:", payload);
-    
-    try {
-      const response = await fetch(`${WEBHOOK_BASE_URL}/webhook/gerenciar-channel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      // Capturar o texto da resposta
-      const responseText = await response.text();
-      console.log("Resposta bruta do webhook:", responseText);
-      
-      // Tentar converter para JSON, se possível
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        console.log("Resposta não é um JSON válido, retornando como texto");
-        responseData = { message: responseText };
-      }
-      
-      if (!response.ok) {
-        console.error(`Erro na requisição: ${response.status} - ${responseText}`);
-        throw new Error(`Erro na requisição: ${response.status} - ${responseText}`);
-      }
+  private static async call(
+    action: InstanceAction,
+    payload: Record<string, unknown>
+  ): Promise<InstanceResponse> {
+    // A rota /api/whatsapp/instance é server-only e opera via service role, então
+    // exige o JWT do Supabase para autenticar/escopar o tenant (o middleware não
+    // protege /api/*). Enviamos o access_token da sessão como Bearer.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
-      console.log("Resposta do webhook:", responseData);
-      return responseData;
-    } catch (error) {
-      console.error("Erro ao enviar requisição para o webhook:", error);
-      throw error;
+    const response = await fetch(INSTANCE_ROUTE, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ action, ...payload }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as InstanceResponse;
+
+    if (!response.ok && data?.ok === undefined) {
+      // Erro de rede/desconhecido sem corpo útil.
+      throw new Error(`Erro na requisição (${action}): ${response.status}`);
     }
+    return data;
   }
 
   /**
-   * Cria um novo canal
-   * @param assistantId ID do assistente
-   * @param companyId ID da empresa
-   * @param channelName Nome do canal
-   * @returns Resposta da API
+   * Cria um novo canal: cria a linha em myia_channels e provisiona a instância
+   * no Evolution (com webhook de ingress embutido). Retorna o canal já gravado.
    */
   static async createChannel(
     assistantId: string,
-    companyId: string,
-    channelName: string,
+    nome: string,
     apiType?: "Evolution" | "Waha"
-  ): Promise<any> {
-    console.log("Criando canal com parâmetros:", { assistantId, companyId, channelName, apiType });
-    return this.sendWebhookRequest({
-      assistent_id: assistantId,
-      nome: channelName,
-      evento: "criar",
-      empresaId: companyId,
-      tipoApi: apiType,
-    });
+  ): Promise<InstanceResponse> {
+    return this.call("create", { assistantId, nome, apiType });
   }
 
   /**
-   * Gera o QR code para um canal existente
-   * @param assistantId ID do assistente
-   * @param companyId ID da empresa
-   * @param channelName Nome do canal
-   * @returns Resposta da API com o QR code em base64
+   * Gera/renova o QR code (ou pairing code) de um canal existente.
    */
-  static async generateQRCode(
-    assistantId: string,
-    companyId: string,
-    channelName: string,
-    apiType?: "Evolution" | "Waha"
-  ): Promise<any> {
-    console.log("Gerando QR code com parâmetros:", { assistantId, companyId, channelName, apiType });
-    return this.sendWebhookRequest({
-      assistent_id: assistantId,
-      nome: channelName,
-      evento: "open",
-      empresaId: companyId,
-      tipoApi: apiType,
-    });
+  static async generateQRCode(channelId: string): Promise<InstanceResponse> {
+    return this.call("connect", { channelId });
   }
 
   /**
-   * Desconecta um canal (logout)
-   * @param assistantId ID do assistente
-   * @param companyId ID da empresa
-   * @param channelName Nome do canal
-   * @returns Resposta da API
+   * Desconecta o número do canal (logout), mantendo a instância provisionada.
    */
-  static async stopChannel(
-    assistantId: string,
-    companyId: string,
-    channelName: string,
-    apiType?: "Evolution" | "Waha"
-  ): Promise<any> {
-    console.log("Desconectando canal com parâmetros:", { assistantId, companyId, channelName, apiType });
-    return this.sendWebhookRequest({
-      assistent_id: assistantId,
-      nome: channelName,
-      evento: "parar",
-      empresaId: companyId,
-      tipoApi: apiType,
-    });
+  static async stopChannel(channelId: string): Promise<InstanceResponse> {
+    return this.call("logout", { channelId });
   }
 
   /**
-   * Exclui um canal
-   * @param assistantId ID do assistente
-   * @param companyId ID da empresa
-   * @param channelName Nome do canal
-   * @returns Resposta da API
+   * Exclui o canal: remove a instância no Evolution e a linha em myia_channels.
    */
-  static async deleteChannel(
-    assistantId: string,
-    companyId: string,
-    channelName: string,
-    apiType?: "Evolution" | "Waha"
-  ): Promise<any> {
-    console.log("Excluindo canal com parâmetros:", { assistantId, companyId, channelName, apiType });
-    return this.sendWebhookRequest({
-      assistent_id: assistantId,
-      nome: channelName,
-      evento: "excluir",
-      empresaId: companyId,
-      tipoApi: apiType,
-    });
+  static async deleteChannel(channelId: string): Promise<InstanceResponse> {
+    return this.call("delete", { channelId });
   }
 }

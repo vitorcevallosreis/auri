@@ -36,6 +36,13 @@ yarn-error.log*
 _env
 !.env.example
 
+# QUALQUER arquivo .env, com qualquer nome. As regras acima só pegam nomes que
+# começam com ".env" — um arquivo chamado `runtime-api-keys.env` passava por
+# elas e seria commitado. Aconteceu em 04/08/2026, com uma chave de API dentro;
+# foi pego antes do `git add`, mas por sorte e não por regra.
+*.env
+!example.env
+
 # vercel
 .vercel
 

@@ -22,12 +22,12 @@ import { useCompany } from "@/contexts/Company"
 import { CompanyAgreement } from "@/contexts/Company/interfaces"
 import { useServices } from "@/contexts/Services"
 import { Service } from "@/contexts/Services/interfaces"
-import axios from "axios"
 import { toast } from "sonner"
 import { useSpecialties } from "@/contexts/Specialties"
 import { Specialty } from "@/contexts/Specialties/interfaces"
 import { useProfessionals } from "@/contexts/Professionals"
 import { Professional } from "@/contexts/Professionals/interfaces"
+import { UUID } from "crypto"
 
 export type FormStep =
   | "select"
@@ -98,7 +98,13 @@ const useCreateProfessionalModel = (
   const { getSpecialties, specialties } = useSpecialties()
   const { company, companyAgreements, getCompany } = useCompany()
   const { services, getServices } = useServices()
-  const { professionals, fetchProfessionals } = useProfessionals()
+  const {
+    professionals,
+    fetchProfessionals,
+    createProfessional,
+    updateProfessional,
+    setProfessionalCatalog,
+  } = useProfessionals()
 
   const [current_step, set_current_step] = useState<FormStep>(EnumFormStep.SELECT)
   const currentStepIndex = formSteps.findIndex(
@@ -110,6 +116,7 @@ const useCreateProfessionalModel = (
   const [is_loading, set_is_loading] = useState(false)
   const [isCreatingNew, setIsCreatingNew] = useState(true)
   const [existingProfessionals, setExistingProfessionals] = useState<Professional[]>([])
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState<UUID | null>(null)
 
   // Carregar dados da empresa quando o componente for montado
   useEffect(() => {
@@ -161,6 +168,11 @@ const useCreateProfessionalModel = (
       registro: "",
       email: "",
       telefone: "",
+      cpf: "",
+      data_nascimento: "",
+      conselho_sigla: "",
+      conselho_numero: "",
+      conselho_uf: "",
       quem_atende: [],
       scheduler: {
         friday: {
@@ -210,55 +222,127 @@ const useCreateProfessionalModel = (
   }, [company])
 
   const onSubmit = async (data: FormData): Promise<void> => {
+    if (!company?.id) {
+      toast.error("Empresa não carregada. Recarregue a página e tente de novo.")
+      return
+    }
+
     set_is_loading(true)
 
     try {
-      data.company_id = company?.id
+      data.company_id = company.id
 
-      const response = await axios.post(
-        "https://webhooks.sejanexa.com.br/webhook/salva-profissional",
-        {
-          body: data,
-        }
-      )
+      // O formulário guarda IDs; as colunas do banco guardam NOMES. Estas duas
+      // colunas são lidas por `listar_profissionais` e vão direto para o
+      // paciente pela boca do agente — gravar UUID aqui faria o agente dizer
+      // "atendo o convênio 3f2b91a4-…".
+      const agreementNames = (data.agreements ?? [])
+        .map((id) => companyAgreements.find((a) => a.id === id)?.name)
+        .filter((name): name is string => Boolean(name))
 
-      if (response.data.status !== "Success") {
-        toast.error("Erro ao criar profissional, tente novamente mais tarde.")
-        return
+      const specialtyNames = (data.specialties ?? [])
+        .map((id) => specialties.find((s) => s.id === id)?.name)
+        .filter((name): name is string => Boolean(name))
+
+      const campos = {
+        nome: data.nome,
+        formacao: data.formacao,
+        registro: data.registro,
+        email: data.email,
+        telefone: data.telefone,
+        // A tabela tem UMA coluna de especialidade (texto) e o formulário
+        // deixa marcar várias. `listar_profissionais` filtra com ilike, então
+        // juntar por vírgula mantém a busca por qualquer uma delas.
+        especialidade: specialtyNames.join(", ") || null,
+        search_tags: specialtyNames,
+        atende_cat_idade: data.quem_atende,
+        convenios_aceitos: agreementNames,
+        horarios_atendimento: data.scheduler,
+        observacoes: data.observacoes || null,
+        // NULL e não "": `cpf` e `conselho_uf` têm CHECK de formato e
+        // `data_nascimento` é `date`.
+        cpf: data.cpf || null,
+        data_nascimento: data.data_nascimento || null,
+        conselho_sigla: data.conselho_sigla || null,
+        conselho_numero: data.conselho_numero || null,
+        conselho_uf: data.conselho_uf || null,
       }
 
-      // Usar a mensagem retornada pelo backend
-      toast.success(response.data.message || "Profissional criado com sucesso!")
+      const catalogo = {
+        services: data.services ?? [],
+        scheduler: data.scheduler,
+      }
+
+      // O passo 1 do formulário deixa escolher entre criar um profissional novo
+      // e configurar um já cadastrado. No segundo caso o que se quer é
+      // ATUALIZAR aquele profissional (e somar serviços/agenda), não duplicá-lo.
+      if (!isCreatingNew && selectedProfessionalId) {
+        await updateProfessional(selectedProfessionalId, campos)
+        await setProfessionalCatalog(selectedProfessionalId, catalogo)
+        toast.success("Profissional atualizado com sucesso!")
+      } else {
+        const created = await createProfessional(
+          { company_id: company.id, ...campos },
+          catalogo
+        )
+
+        if (!created) {
+          toast.error("Não foi possível criar o profissional.")
+          return
+        }
+
+        toast.success("Profissional criado com sucesso!")
+      }
+
       setShowForm(false)
 
       // Recarregar a lista de profissionais após a criação bem-sucedida
-      if (company?.id) {
-        await fetchProfessionals(company.id as `${string}-${string}-${string}-${string}-${string}`)
-      }
+      await fetchProfessionals(company.id as `${string}-${string}-${string}-${string}-${string}`)
 
       reset()
-      setValue("company_id", company?.id)
+      setValue("company_id", company.id)
       set_current_step(EnumFormStep.SELECT)
       setSearchTerm("")
       setProfessionalSearchTerm("")
       setIsCreatingNew(true)
+      setSelectedProfessionalId(null)
       getCompany()
       getServices()
     } catch (error) {
-      console.log("error", error)
+      // O caminho antigo engolia o erro num console.log e a tela não mudava —
+      // clicar em salvar não fazia absolutamente nada visível.
+      const message =
+        error instanceof Error ? error.message : "Erro desconhecido"
+      console.error("Erro ao salvar profissional:", error)
+      toast.error(`Erro ao salvar profissional: ${message}`)
     } finally {
       set_is_loading(false)
     }
   }
 
   const selectProfessional = (professional: Professional) => {
+    // Guardado para o submit saber que é ATUALIZAÇÃO. Sem isso, o passo
+    // "Selecionar profissional existente" gravaria uma segunda linha com o
+    // mesmo nome.
+    setSelectedProfessionalId(professional.id)
+
     // Preencher APENAS os campos básicos do formulário (passo 1) com os dados do profissional selecionado
     setValue("nome", professional.nome || "")
     setValue("formacao", professional.formacao || "")
     setValue("registro", professional.registro || "")
     setValue("email", professional.email || "")
     setValue("telefone", professional.telefone || "")
-    
+
+    // Os dados da Memed também são recarregados: este fluxo grava o formulário
+    // inteiro por cima do cadastro, então um campo não preenchido aqui viraria
+    // NULL no banco — e apagaria o CPF que a clínica já tinha digitado.
+    setValue("cpf", professional.cpf || "")
+    setValue("data_nascimento", professional.data_nascimento || "")
+    setValue("conselho_sigla", professional.conselho_sigla || "")
+    setValue("conselho_numero", professional.conselho_numero || "")
+    setValue("conselho_uf", professional.conselho_uf || "")
+
+
     // Inicializar outros campos com valores padrão para nova criação
     // Desta forma, garantimos que os campos estejam vazios para preenchimento nos próximos passos
     setValue("agreements", [])

@@ -121,11 +121,11 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
   return (
     <div className="space-y-8">
       {/* Seção de Notificação */}
-      <div className="bg-white rounded-lg border p-5 shadow-sm">
+      <div className="bg-card rounded-lg border p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Bell className="h-5 w-5 text-blue-600 mr-2" />
-            <h3 className="text-lg font-medium text-gray-800">Notificação ao Cliente</h3>
+            <Bell className="h-5 w-5 text-blue-600 mr-2 dark:text-blue-400" />
+            <h3 className="text-lg font-medium text-foreground">Notificação ao Cliente</h3>
           </div>
           <Switch 
             checked={sendNotification} 
@@ -133,7 +133,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
             className="data-[state=checked]:bg-blue-600"
           />
         </div>
-        <p className="text-gray-600 text-sm">
+        <p className="text-muted-foreground text-sm">
           {sendNotification 
             ? "O cliente receberá uma notificação sobre este agendamento." 
             : "O cliente não será notificado sobre este agendamento."}
@@ -141,11 +141,11 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
       </div>
       
       {/* Seção de Agendamentos Recorrentes */}
-      <div className="bg-white rounded-lg border p-5 shadow-sm">
+      <div className="bg-card rounded-lg border p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Repeat className="h-5 w-5 text-blue-600 mr-2" />
-            <h3 className="text-lg font-medium text-gray-800">Agendamento Recorrente</h3>
+            <Repeat className="h-5 w-5 text-blue-600 mr-2 dark:text-blue-400" />
+            <h3 className="text-lg font-medium text-foreground">Agendamento Recorrente</h3>
           </div>
           <Switch 
             checked={isRecurring} 
@@ -158,7 +158,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="recurrence-type" className="text-gray-700 mb-1 block">
+                <Label htmlFor="recurrence-type" className="text-foreground mb-1 block">
                   Tipo de Recorrência
                 </Label>
                 <Select 
@@ -177,7 +177,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
               
               {recurrenceType === 'sessions' ? (
                 <div>
-                  <Label htmlFor="sessions-count" className="text-gray-700 mb-1 block">
+                  <Label htmlFor="sessions-count" className="text-foreground mb-1 block">
                     Número de Sessões
                   </Label>
                   <Input
@@ -191,7 +191,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
                 </div>
               ) : (
                 <div>
-                  <Label className="text-gray-700 mb-1 block">
+                  <Label className="text-foreground mb-1 block">
                     Data Final
                   </Label>
                   <Popover>
@@ -200,7 +200,7 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
                         variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
-                          !endDate && "text-gray-500"
+                          !endDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -224,13 +224,13 @@ export const AdditionalOptionsStep: React.FC<AdditionalOptionsStepProps> = ({
             
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="info">
-                <AccordionTrigger className="text-sm text-blue-600">
+                <AccordionTrigger className="text-sm text-blue-600 dark:text-blue-400">
                   <div className="flex items-center">
                     <Info className="h-4 w-4 mr-2" />
                     Informações sobre agendamentos recorrentes
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="text-sm text-gray-600">
+                <AccordionContent className="text-sm text-muted-foreground">
                   <ul className="list-disc pl-5 space-y-1">
                     <li>Os agendamentos recorrentes serão criados com base no primeiro agendamento.</li>
                     <li>As sessões serão agendadas no mesmo dia da semana e horário.</li>

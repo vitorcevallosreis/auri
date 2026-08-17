@@ -99,7 +99,7 @@ export default function ProfessionalPageView({
                             <span className="font-medium">
                               {professional.nome}
                             </span>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               {professional.formacao}
                             </span>
                           </div>
@@ -128,11 +128,11 @@ export default function ProfessionalPageView({
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center py-10 bg-gray-50 rounded-lg">
+                <div className="text-center py-10 bg-muted rounded-lg">
                   <h3 className="font-medium text-lg mb-2">
                     Nenhum profissional cadastrado
                   </h3>
-                  <p className="text-gray-500 mb-4">
+                  <p className="text-muted-foreground mb-4">
                     Clique no botão acima para adicionar seu primeiro
                     profissional
                   </p>

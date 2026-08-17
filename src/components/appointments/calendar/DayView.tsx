@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { DayViewProps } from '@/types/calendar';
 import { AppointmentCard } from '../cards/AppointmentCard';
 import { format, parseISO, addHours, differenceInMinutes } from 'date-fns';
@@ -23,6 +23,20 @@ export function DayView({ currentDate, appointments, onAppointmentClick }: DayVi
   
   // Gera as horas do dia para a visualização
   const hours = Array.from({ length: BUSINESS_HOURS.end - BUSINESS_HOURS.start }, (_, i) => BUSINESS_HOURS.start + i);
+
+  // A grade cobre 24h para não esconder agendamentos fora do horário comercial
+  // (uma clínica pode ter encaixe às 6h). Mas abrir a agenda na madrugada vazia
+  // é ruim: aqui rolamos até as 7h na montagem, sem remover nada.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = scrollRef.current?.querySelector<HTMLElement>(
+      "[data-radix-scroll-area-viewport]",
+    );
+    if (viewport) {
+      viewport.scrollTop = (7 - BUSINESS_HOURS.start) * HOUR_HEIGHT;
+    }
+  }, []);
+
   
   // Calcula a posição e altura de cada agendamento com base no horário
   const getAppointmentStyle = (appointment: any) => {
@@ -54,16 +68,16 @@ export function DayView({ currentDate, appointments, onAppointmentClick }: DayVi
         {format(currentDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
       </h3>
       
-      <ScrollArea className="h-[calc(100vh-220px)]" type="always">
+      <ScrollArea ref={scrollRef} className="h-[calc(100vh-220px)]" type="always">
         <div className="relative pt-4" style={{ height: `${hours.length * HOUR_HEIGHT + 16}px` }}>
           {/* Linhas de hora */}
           {hours.map((hour) => (
             <div 
               key={hour} 
-              className="absolute w-full border-t border-gray-200 flex"
+              className="absolute w-full border-t border-border flex"
               style={{ top: `${(hour - BUSINESS_HOURS.start) * HOUR_HEIGHT + 16}px` }}
             >
-              <div className="w-16 pr-2 text-right text-sm text-gray-500 -mt-3">
+              <div className="w-16 pr-2 text-right text-sm text-muted-foreground -mt-3">
                 {hour}:00
               </div>
               <div className="flex-1"></div>

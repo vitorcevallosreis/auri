@@ -22,7 +22,7 @@ export function MetricCard({
   className,
 }: MetricCardProps) {
   return (
-    <Card className={cn("transition-all hover:shadow-lg hover:border-[#00897B]/30", className)}>
+    <Card className={cn("transition-all hover:shadow-lg hover:border-primary/30", className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -39,7 +39,7 @@ export function MetricCard({
             <span
               className={cn(
                 "text-xs font-medium",
-                trend.isPositive ? "text-[#00897B]" : "text-red-600"
+                trend.isPositive ? "text-primary" : "text-red-600 dark:text-red-400"
               )}
             >
               {trend.isPositive ? "+" : "-"}{trend.value}%

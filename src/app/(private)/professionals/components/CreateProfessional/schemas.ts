@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { cpfValido } from "../DadosPrescricao"
 
 export const basicInfoSchema = z.object({
   company_id: z.string(),
@@ -10,6 +11,18 @@ export const stepOneSchema = z.object({
   registro: z.string().min(2, "Registro deve ter pelo menos 2 caracteres"),
   email: z.string().email("E-mail inválido"),
   telefone: z.string().min(8, "Telefone inválido"),
+
+  // Dados da Memed. Opcionais — o profissional é cadastrado sem eles e a
+  // clínica completa depois; o que NÃO pode é gravar meio CPF, porque o CHECK
+  // de 0026 exige 11 dígitos e a linha inteira seria recusada.
+  cpf: z
+    .string()
+    .optional()
+    .refine((v) => !v || cpfValido(v), "CPF inválido"),
+  data_nascimento: z.string().optional(),
+  conselho_sigla: z.string().optional(),
+  conselho_numero: z.string().optional(),
+  conselho_uf: z.string().optional(),
 })
 
 export const stepTwoSchema = z.object({

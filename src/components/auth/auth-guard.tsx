@@ -17,7 +17,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated && !isPublicPath) {
       router.push("/login")
     } else if (isAuthenticated && pathname === "/login") {
-      router.push("/dashboard")
+      router.push("/")
     }
   }, [isAuthenticated, pathname, router])
 

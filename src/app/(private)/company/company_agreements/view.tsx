@@ -21,26 +21,26 @@ export default function CompanyAgreementsView({
   handleCancel,
 }: ReturnType<typeof useCompanyAgreementsModel>) {
   return (
-    <Card className="bg-white border-0 shadow-sm h-fit">
+    <Card className="bg-card border-0 shadow-sm h-fit">
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-teal-50 rounded-lg">
-            <Check className="h-5 w-5 text-[#00897B]" />
+          <div className="p-2 bg-teal-50 rounded-lg dark:bg-teal-500/10">
+            <Check className="h-5 w-5 text-primary" />
           </div>
-          <CardTitle className="text-lg font-semibold text-gray-900">Convênios</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Convênios</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <form onSubmit={handleSubmit(onSubmit)} className="mb-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Nome do Convênio (Ex: Cartão de Crédito, Pix)</label>
+              <label className="text-sm font-medium text-foreground">Nome do Convênio (Ex: Cartão de Crédito, Pix)</label>
               <Input
                 type="text"
                 placeholder="-"
                 {...register("name")}
                 disabled={isLoading}
-                className="border-gray-200 focus:border-[#00897B] focus:ring-[#00897B]"
+                className="border-border focus:border-primary focus:ring-ring"
               />
               {errors.name && (
                 <p className="text-red-500 text-sm">{errors.name.message}</p>
@@ -48,7 +48,7 @@ export default function CompanyAgreementsView({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Status</label>
+              <label className="text-sm font-medium text-foreground">Status</label>
               <div>
                 <Switch
                   {...register("status")}
@@ -66,7 +66,7 @@ export default function CompanyAgreementsView({
               <Button 
                 type="submit" 
                 disabled={isLoading} 
-                className="bg-[#00897B] hover:bg-[#007366] text-white font-medium py-1.5 px-3 rounded-md text-sm transition-colors"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-1.5 px-3 rounded-md text-sm transition-colors"
               >
                 {isLoading ? "Salvando..." : isEditing ? "Atualizar" : "Adicionar"}
               </Button>
@@ -74,7 +74,7 @@ export default function CompanyAgreementsView({
                 <Button 
                   type="button" 
                   onClick={handleCancel}
-                  className="bg-[#00897B] hover:bg-[#007366] text-white font-medium py-1.5 px-3 rounded-md text-sm transition-colors"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-1.5 px-3 rounded-md text-sm transition-colors"
                 >
                   Cancelar
                 </Button>
@@ -84,16 +84,16 @@ export default function CompanyAgreementsView({
         </form>
 
         <div className="mt-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Convênios Cadastrados:</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Convênios Cadastrados:</h3>
           {agreements.length === 0 ? (
-            <p className="text-sm text-gray-500">-</p>
+            <p className="text-sm text-muted-foreground">-</p>
           ) : (
             <div className="space-y-2">
               {agreements.map((agreement) => (
-                <div key={agreement.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={agreement.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${agreement.status ? 'bg-[#00897B]' : 'bg-gray-400'}`}></div>
-                    <span className="text-sm font-medium text-gray-900">{agreement.name}</span>
+                    <div className={`w-2 h-2 rounded-full ${agreement.status ? 'bg-primary' : 'bg-gray-400'}`}></div>
+                    <span className="text-sm font-medium text-foreground">{agreement.name}</span>
                   </div>
                   <div className="flex gap-1">
                     <Button 
@@ -101,7 +101,7 @@ export default function CompanyAgreementsView({
                       size="sm" 
                       variant="light" 
                       onClick={() => handleEdit(agreement.id)}
-                      className="h-8 w-8 hover:bg-gray-200"
+                      className="h-8 w-8 hover:bg-muted"
                     >
                       <Pencil className="h-3 w-3" />
                     </Button>
@@ -110,7 +110,7 @@ export default function CompanyAgreementsView({
                       size="sm" 
                       variant="light" 
                       onClick={() => handleDelete(agreement.id)}
-                      className="h-8 w-8 hover:bg-red-100 text-[#00897B]"
+                      className="h-8 w-8 text-primary hover:bg-destructive/10"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

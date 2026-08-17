@@ -24,10 +24,10 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
             className={cn(
               "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-200",
               index < currentStep 
-                ? "bg-[#00897B] border-[#00897B] text-white" 
+                ? "bg-primary border-primary text-primary-foreground" 
                 : index === currentStep 
-                  ? "border-[#00897B] text-[#00897B]" 
-                  : "border-gray-300 text-gray-300"
+                  ? "border-primary text-primary" 
+                  : "border-border text-gray-300"
             )}
             onClick={() => {
               // Só permite clicar em etapas anteriores ou na atual
@@ -49,7 +49,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
             <span 
               className={cn(
                 "text-xs font-medium",
-                index <= currentStep ? "text-[#00897B]" : "text-gray-400"
+                index <= currentStep ? "text-primary" : "text-muted-foreground"
               )}
             >
               {step}
@@ -61,7 +61,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
             <div 
               className={cn(
                 "flex-grow h-0.5 mx-2",
-                index < currentStep ? "bg-[#00897B]" : "bg-gray-300"
+                index < currentStep ? "bg-primary" : "bg-gray-300"
               )}
             />
           )}

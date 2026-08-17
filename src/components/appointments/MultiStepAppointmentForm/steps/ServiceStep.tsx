@@ -156,7 +156,7 @@ export const ServiceStep: React.FC<ServiceStepProps> = ({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar procedimento ou consulta"
             className="pl-8"
@@ -167,9 +167,9 @@ export const ServiceStep: React.FC<ServiceStepProps> = ({
 
         <div className="border rounded-md max-h-64 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center text-gray-500">Carregando...</div>
+            <div className="p-4 text-center text-muted-foreground">Carregando...</div>
           ) : filteredServices.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-muted-foreground">
               Nenhum procedimento disponível para este profissional.
             </div>
           ) : (
@@ -177,21 +177,21 @@ export const ServiceStep: React.FC<ServiceStepProps> = ({
               {filteredServices.map((service) => (
                 <div
                   key={service.id}
-                  className={`p-3 hover:bg-gray-50 cursor-pointer ${
-                    selectedServiceId === service.id ? 'bg-teal-50 border-l-4 border-[#00897B]' : ''
+                  className={`p-3 hover:bg-muted cursor-pointer ${
+                    selectedServiceId === service.id ? 'bg-teal-50 border-l-4 border-primary dark:bg-teal-500/10' : ''
                   }`}
                   onClick={() => handleServiceSelect(service.id)}
                 >
                   <div className="flex justify-between">
                     <div className="font-medium">{service.name}</div>
                     {service.price !== undefined && (
-                      <div className="text-sm font-medium text-[#00897B]">
+                      <div className="text-sm font-medium text-primary">
                         {formatCurrency(service.price)}
                       </div>
                     )}
                   </div>
                   
-                  <div className="flex items-center mt-1 text-sm text-gray-500">
+                  <div className="flex items-center mt-1 text-sm text-muted-foreground">
                     {service.tempo_medio && (
                       <div className="flex items-center mr-3">
                         <Clock className="h-3.5 w-3.5 mr-1" />
@@ -203,7 +203,7 @@ export const ServiceStep: React.FC<ServiceStepProps> = ({
                   </div>
                   
                   {service.description && (
-                    <div className="mt-2 text-sm text-gray-600">
+                    <div className="mt-2 text-sm text-muted-foreground">
                       {service.description}
                     </div>
                   )}

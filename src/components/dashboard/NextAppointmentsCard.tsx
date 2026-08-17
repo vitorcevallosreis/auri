@@ -17,10 +17,10 @@ interface NextAppointmentsCardProps {
 
 export function NextAppointmentsCard({ appointments }: NextAppointmentsCardProps) {
   return (
-    <Card className="col-span-1 lg:col-span-2 shadow-sm border border-gray-100">
+    <Card className="col-span-1 lg:col-span-2 shadow-sm border border-border">
       <CardHeader className="pb-3 border-b border-gray-50">
         <CardTitle className="text-lg font-medium flex items-center">
-          <span className="text-[#00897B] mr-2">≡</span> Próximas Consultas
+          <span className="text-primary mr-2">≡</span> Próximas Consultas
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
@@ -28,10 +28,10 @@ export function NextAppointmentsCard({ appointments }: NextAppointmentsCardProps
           {appointments.map((appointment) => (
             <div key={appointment.id} className="flex items-center justify-between py-1">
               <div className="flex items-start">
-                <Clock className="h-5 w-5 text-[#00897B] mt-0.5 mr-3" />
+                <Clock className="h-5 w-5 text-primary mt-0.5 mr-3" />
                 <div>
-                  <p className="font-medium text-gray-800">{appointment.patientName}</p>
-                  <p className="text-sm text-gray-500">{appointment.appointmentType}</p>
+                  <p className="font-medium text-foreground">{appointment.patientName}</p>
+                  <p className="text-sm text-muted-foreground">{appointment.appointmentType}</p>
                 </div>
               </div>
               <div className="text-right">

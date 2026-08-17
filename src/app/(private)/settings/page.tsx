@@ -9,31 +9,31 @@ const settingsLinks = [
   {
     title: "Meus Dispositivos",
     description: "Gerencie seus dispositivos conectados",
-    icon: <TabletSmartphone className="h-8 w-8 text-[#00897B]" />,
+    icon: <TabletSmartphone className="h-8 w-8 text-primary" />,
     href: "/devices",
   },
   {
     title: "Preferências",
     description: "Personalize sua experiência no sistema",
-    icon: <Settings className="h-8 w-8 text-[#00897B]" />,
+    icon: <Settings className="h-8 w-8 text-primary" />,
     href: "/settings/preferences",
   },
   {
     title: "Segurança",
     description: "Configure opções de segurança e privacidade",
-    icon: <Shield className="h-8 w-8 text-[#00897B]" />,
+    icon: <Shield className="h-8 w-8 text-primary" />,
     href: "/settings/security",
   },
   {
     title: "Perfil",
     description: "Atualize suas informações pessoais",
-    icon: <User className="h-8 w-8 text-[#00897B]" />,
+    icon: <User className="h-8 w-8 text-primary" />,
     href: "/settings/profile",
   },
   {
     title: "Notificações",
     description: "Configure suas preferências de notificação",
-    icon: <Bell className="h-8 w-8 text-[#00897B]" />,
+    icon: <Bell className="h-8 w-8 text-primary" />,
     href: "/settings/notifications",
   },
 ]
@@ -52,7 +52,10 @@ export default function SettingsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {settingsLinks.map((link) => (
             <Link href={link.href} key={link.href}>
-              <Card className="h-full transition-all hover:bg-teal-50 hover:text-[#00897B]">
+              {/* No escuro, `hover:bg-teal-50 hover:text-primary` clareava o card
+                  para quase branco e pintava o texto de menta — o cartão inteiro
+                  virava ilegível justamente ao passar o mouse. */}
+              <Card className="h-full transition-all hover:bg-accent/15">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-xl">{link.title}</CardTitle>
                   {link.icon}

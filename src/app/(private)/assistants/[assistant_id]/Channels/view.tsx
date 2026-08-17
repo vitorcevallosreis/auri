@@ -26,6 +26,8 @@ import {
 import { Channel, EnumChannelStatus } from "@/contexts/Assistants/interfaces"
 import { Plus, Trash2, RefreshCw, PhoneOff, Check, AlertCircle } from "lucide-react"
 import { formatChannelName } from "@/utils/channelFormat"
+import { WhatsAppIcon } from "@/components/icons/whatsapp"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
 
 export default function ChannelsView({
   channel,
@@ -198,35 +200,31 @@ export default function ChannelsView({
       </div>
 
       {channels.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-lg border-gray-300 bg-gray-50">
-          <Image
-            alt="WhatsApp"
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/640px-WhatsApp.svg.png"
-            width={80}
-          />
-          <p className="mt-4 text-gray-600">Nenhum canal configurado</p>
-          <Button 
-            color="primary" 
-            className="mt-4"
-            startContent={<Plus size={18} />}
-            onPress={openCreateModal}
-          >
-            Adicionar Canal
-          </Button>
-        </div>
+        <Empty className="rounded-lg border border-dashed border-border bg-muted/50">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <WhatsAppIcon />
+            </EmptyMedia>
+            <EmptyTitle>Nenhum canal configurado</EmptyTitle>
+            <EmptyDescription>
+              Conecte um número de WhatsApp para o assistente começar a atender.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button color="primary" startContent={<Plus size={18} />} onPress={openCreateModal}>
+              Adicionar Canal
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {channels.map((channel) => {
             const normalized = getNormalizedStatus(channel)
             return (
-            <Card key={channel.id} className="border border-gray-200">
-              <CardHeader className="flex justify-between items-center px-4 py-3 bg-gray-50">
+            <Card key={channel.id} className="border border-border">
+              <CardHeader className="flex justify-between items-center px-4 py-3 bg-muted">
                 <div className="flex items-center gap-2">
-                  <Image
-                    alt="WhatsApp"
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/640px-WhatsApp.svg.png"
-                    width={24}
-                  />
+                  <WhatsAppIcon className="h-6 w-6 text-[#25D366]" />
                   <span className="font-medium">{formatChannelName(channel.nome)}</span>
                 </div>
                 {getStatusBadge(normalized)}
@@ -235,21 +233,21 @@ export default function ChannelsView({
               <CardBody className="px-4 py-3">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Tipo:</span>
+                    <span className="text-muted-foreground">Tipo:</span>
                     <span className="font-medium">{channel.tipoConexao || "WhatsApp"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">API:</span>
+                    <span className="text-muted-foreground">API:</span>
                     <span className="font-medium">{channel.apiUtilizada || "-"}</span>
                   </div>
                   {channel.remoteJid && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Número:</span>
+                      <span className="text-muted-foreground">Número:</span>
                       <span className="font-medium">{channel.remoteJid}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Última atualização:</span>
+                    <span className="text-muted-foreground">Última atualização:</span>
                     <span className="font-medium">
                       {channel.ultimaAtualizacao 
                         ? new Date(channel.ultimaAtualizacao).toLocaleString() 
@@ -313,16 +311,11 @@ export default function ChannelsView({
                 Criar Novo Canal
               </ModalHeader>
               <ModalBody>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   Um novo canal de WhatsApp será criado para este assistente. Após a criação, você poderá conectar seu dispositivo através do QR Code.
                 </p>
                 <div className="flex justify-center">
-                  <Image
-                    alt="WhatsApp"
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/640px-WhatsApp.svg.png"
-                    width={60}
-                    className="mb-4"
-                  />
+                  <WhatsAppIcon className="h-14 w-14 mb-4 text-[#25D366]" />
                 </div>
                 <Input
                   label="Nome do Canal"
@@ -391,12 +384,12 @@ export default function ChannelsView({
                   Conectar WhatsApp
                 </ModalHeader>
                 <ModalBody>
-                  <div className="border border-gray-300 rounded-md p-4">
+                  <div className="border border-border rounded-md p-4">
                     {currentChannel?.qrcode64 ? (
                       <div className="flex flex-col items-center">
                         <div className="mb-4 text-center">
-                          <p className="text-gray-600">Escaneie o QR Code com seu WhatsApp</p>
-                          <p className="text-sm text-gray-500 mt-1">Abra o WhatsApp no seu telefone &gt; Menu &gt; WhatsApp Web</p>
+                          <p className="text-muted-foreground">Escaneie o QR Code com seu WhatsApp</p>
+                          <p className="text-sm text-muted-foreground mt-1">Abra o WhatsApp no seu telefone &gt; Menu &gt; WhatsApp Web</p>
                         </div>
                         <div
                           style={{
@@ -420,14 +413,14 @@ export default function ChannelsView({
                               e.currentTarget.src = "https://via.placeholder.com/250x250?text=QR+Code+Erro";
                             }}
                           />
-                          <p className="text-xs text-gray-400 mt-2 text-center">ID do Canal: {currentChannel.id}</p>
+                          <p className="text-xs text-muted-foreground mt-2 text-center">ID do Canal: {currentChannel.id}</p>
                         </div>
                       </div>
                     ) : isPollingQRCode ? (
                       <div className="flex flex-col items-center py-8">
                         <div className="mb-4 text-center">
-                          <p className="text-gray-600">Gerando QR Code...</p>
-                          <p className="text-sm text-gray-500 mt-1">Isso pode levar alguns segundos</p>
+                          <p className="text-muted-foreground">Gerando QR Code...</p>
+                          <p className="text-sm text-muted-foreground mt-1">Isso pode levar alguns segundos</p>
                         </div>
                         <div
                           style={{
@@ -446,7 +439,7 @@ export default function ChannelsView({
                         >
                           <div className="flex flex-col items-center">
                             <Spinner size="lg" color="primary" className="mb-4" />
-                            <p className="text-sm text-gray-500">Aguardando QR Code</p>
+                            <p className="text-sm text-muted-foreground">Aguardando QR Code</p>
                           </div>
                         </div>
                       </div>

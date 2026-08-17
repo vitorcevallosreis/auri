@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { WeekViewProps } from '@/types/calendar';
 import { AppointmentCard } from '../cards/AppointmentCard';
 import { format, isToday, parseISO, differenceInMinutes } from 'date-fns';
@@ -23,6 +23,20 @@ export function WeekView({ currentDate, appointments, onAppointmentClick }: Week
   
   // Gera as horas do dia para a visualização
   const hours = Array.from({ length: BUSINESS_HOURS.end - BUSINESS_HOURS.start }, (_, i) => BUSINESS_HOURS.start + i);
+
+  // A grade cobre 24h para não esconder agendamentos fora do horário comercial
+  // (uma clínica pode ter encaixe às 6h). Mas abrir a agenda na madrugada vazia
+  // é ruim: aqui rolamos até as 7h na montagem, sem remover nada.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = scrollRef.current?.querySelector<HTMLElement>(
+      "[data-radix-scroll-area-viewport]",
+    );
+    if (viewport) {
+      viewport.scrollTop = (7 - BUSINESS_HOURS.start) * HOUR_HEIGHT;
+    }
+  }, []);
+
   
   // Calcula a posição e altura de cada agendamento com base no horário
   const getAppointmentStyle = (appointment: any, dayIndex: number) => {
@@ -68,14 +82,14 @@ export function WeekView({ currentDate, appointments, onAppointmentClick }: Week
                 key={`header-${index}`} 
                 className={cn(
                   "text-center p-2 font-medium text-sm",
-                  isCurrentDay && "bg-[#E0F2F1] text-[#00897B] rounded-md"
+                  isCurrentDay && "bg-accent/20 text-foreground rounded-md"
                 )}
                 aria-live={isCurrentDay ? "polite" : "off"}
               >
                 <div className="uppercase">{format(day, 'EEEE', { locale: ptBR })}</div>
                 <div className={cn(
                   "text-lg mt-1",
-                  isCurrentDay && "font-bold text-[#00897B]"
+                  isCurrentDay && "font-bold text-primary"
                 )}>
                   {format(day, 'd')}
                 </div>
@@ -86,23 +100,23 @@ export function WeekView({ currentDate, appointments, onAppointmentClick }: Week
       </div>
       
       {/* Grade de horários com agendamentos */}
-      <ScrollArea className="h-[calc(100vh-220px)]" type="always">
+      <ScrollArea ref={scrollRef} className="h-[calc(100vh-220px)]" type="always">
         <div className="relative pt-4" style={{ height: `${hours.length * HOUR_HEIGHT + 16}px` }}>
           {/* Linhas de hora */}
           {hours.map((hour) => (
             <div 
               key={`hour-${hour}`} 
-              className="absolute w-full border-t border-gray-200 flex"
+              className="absolute w-full border-t border-border flex"
               style={{ top: `${(hour - BUSINESS_HOURS.start) * HOUR_HEIGHT + 16}px` }}
             >
-              <div className="w-16 pr-2 text-right text-sm text-gray-500 -mt-3">
+              <div className="w-16 pr-2 text-right text-sm text-muted-foreground -mt-3">
                 {hour}:00
               </div>
               <div className="flex-1 grid grid-cols-7 gap-2">
                 {weekDays.map((_, dayIndex) => (
                   <div 
                     key={`hour-${hour}-day-${dayIndex}`} 
-                    className="border-l border-gray-100 h-full"
+                    className="border-l border-border h-full"
                   />
                 ))}
               </div>

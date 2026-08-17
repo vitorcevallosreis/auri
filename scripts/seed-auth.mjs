@@ -17,8 +17,8 @@ if (existsSync(".env.local")) {
   }
 }
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) { console.error("faltam NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"); process.exit(2); }
+const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!url || !key) { console.error("faltam NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SECRET_KEY (ou a legada SUPABASE_SERVICE_ROLE_KEY)"); process.exit(2); }
 
 const admin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 

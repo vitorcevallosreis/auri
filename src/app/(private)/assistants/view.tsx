@@ -12,6 +12,8 @@ import { Button as DeleteButton } from "@nextui-org/react"
 import CreateAssistant from "./CreateAssistant"
 import { DashboardLayout } from "@/app/layout/dashboard-layout"
 import { MessageSquare, CreditCard, Clock, Users, Sparkles, Bot, CheckCircle } from "lucide-react"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
+import { AuriGrafismo } from "@/components/brand/auri-grafismo"
 
 // Agentes Especializados predefinidos
 const specializedAgents = [
@@ -27,7 +29,7 @@ const specializedAgents = [
       "Reagendamento inteligente"
     ],
     status: "Disponível",
-    color: "bg-[#00897B]",
+    color: "bg-primary",
     type: "specialist"
   },
   {
@@ -58,21 +60,21 @@ export default function AssistantsPageView({
       <div className="space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Assistentes Inteligentes</h1>
-          <p className="text-gray-600">Automatize sua clínica com agentes especializados que trabalham 24/7</p>
+          <h1 className="text-3xl font-bold text-foreground">Assistentes Inteligentes</h1>
+          <p className="text-muted-foreground">Automatize sua clínica com agentes especializados que trabalham 24/7</p>
         </div>
 
         {/* Agentes Especializados Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#00897B]" />
-            <h2 className="text-xl font-semibold text-gray-900">Agentes Especializados</h2>
-            <Badge className="bg-[#E0F2F1] text-[#00897B] hover:bg-[#B2DFDB]">Novidade</Badge>
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">Agentes Especializados</h2>
+            <Badge className="bg-accent/20 text-foreground hover:bg-accent/30">Novidade</Badge>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {specializedAgents.map((agent) => (
-              <Card key={agent.id} className="relative overflow-hidden border-2 hover:border-[#00897B]/20 transition-all duration-200 hover:shadow-lg">
+              <Card key={agent.id} className="relative overflow-hidden border-2 hover:border-primary/20 transition-all duration-200 hover:shadow-lg">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -86,7 +88,7 @@ export default function AssistantsPageView({
                     </div>
                     <Badge 
                       variant={agent.status === "Disponível" ? "default" : "secondary"}
-                      className={agent.status === "Disponível" ? "bg-[#00897B] hover:bg-[#00796B]" : ""}
+                      className={agent.status === "Disponível" ? "bg-primary hover:bg-primary/90" : ""}
                     >
                       {agent.status}
                     </Badge>
@@ -95,11 +97,11 @@ export default function AssistantsPageView({
                 
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-700">Principais funcionalidades:</h4>
+                    <h4 className="text-sm font-medium text-foreground">Principais funcionalidades:</h4>
                     <div className="grid grid-cols-2 gap-2">
                       {agent.features.map((feature, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                          <CheckCircle className="h-3 w-3 text-[#00897B]" />
+                        <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CheckCircle className="h-3 w-3 text-primary" />
                           <span>{feature}</span>
                         </div>
                       ))}
@@ -109,8 +111,8 @@ export default function AssistantsPageView({
                   <div className="pt-2">
                     <Button 
                       className={`w-full ${agent.status === "Disponível" 
-                        ? "bg-[#00897B] hover:bg-[#00796B] text-white" 
-                        : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                        ? "bg-primary hover:bg-primary/90 text-primary-foreground" 
+                        : "bg-muted text-muted-foreground cursor-not-allowed"
                       }`}
                       disabled={agent.status !== "Disponível"}
                     >
@@ -120,7 +122,7 @@ export default function AssistantsPageView({
                 </CardContent>
                 
                 {agent.status === "Disponível" && (
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-[#00897B]/10 to-transparent" />
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-primary/10 to-transparent" />
                 )}
               </Card>
             ))}
@@ -128,14 +130,14 @@ export default function AssistantsPageView({
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-200" />
+        <div className="border-t border-border" />
 
         {/* Assistentes Personalizados Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-gray-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Assistentes Personalizados</h2>
+              <Bot className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-xl font-semibold text-foreground">Assistentes Personalizados</h2>
             </div>
             <CreateAssistant />
           </div>
@@ -164,11 +166,11 @@ export default function AssistantsPageView({
                         radius="full"
                         size="md"
                         src={assistant?.avatar as string}
-                        className="border-[#00897B]/20"
+                        className="border-primary/20"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{assistant?.name}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="font-medium text-foreground">{assistant?.name}</div>
+                        <div className="text-sm text-muted-foreground">
                           {assistant?.purpose || "Sem especialização definida"}
                         </div>
                       </div>
@@ -177,13 +179,13 @@ export default function AssistantsPageView({
                       </Badge>
                     </div>
 
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                    <div className="flex justify-between items-center pt-2 border-t border-border">
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => router.push(`/assistants/${assistant?.id}`)}
-                          className="border-[#00897B]/20 text-[#00897B] hover:bg-[#00897B]/5"
+                          className="border-primary/20 text-primary hover:bg-primary/5"
                         >
                           Configurar
                         </Button>
@@ -204,19 +206,26 @@ export default function AssistantsPageView({
               ))
             ) : (
               <div className="col-span-full">
-                <Card className="p-8 text-center border-dashed border-2 border-gray-200">
-                  <div className="space-y-4">
-                    <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Bot className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-medium text-gray-900">Nenhum assistente personalizado</h3>
-                      <p className="text-gray-500 max-w-md mx-auto">
-                        Comece com nossos Agentes Especializados ou crie seu próprio assistente personalizado.
-                      </p>
-                    </div>
-                    <CreateAssistant />
-                  </div>
+                <Card className="relative overflow-hidden border-2 border-dashed border-border">
+                  <AuriGrafismo
+                    className="absolute -bottom-1/2 left-1/2 -z-10 w-[80%] max-w-md -translate-x-1/2 text-accent"
+                    opacity={0.1}
+                  />
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Bot />
+                      </EmptyMedia>
+                      <EmptyTitle>Nenhum assistente personalizado</EmptyTitle>
+                      <EmptyDescription>
+                        Comece com nossos Agentes Especializados ou crie seu próprio
+                        assistente personalizado.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <CreateAssistant />
+                    </EmptyContent>
+                  </Empty>
                 </Card>
               </div>
             )}

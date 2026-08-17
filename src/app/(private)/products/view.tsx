@@ -49,7 +49,7 @@ export default function ProductsView({
           {filteredProducts.map((product) => (
             <Card
               key={product.id}
-              className="p-5 flex flex-col justify-between shadow-none border border-gray-300"
+              className="p-5 flex flex-col justify-between shadow-none border border-border"
               radius="sm"
             >
               {product.image_path && (
@@ -63,7 +63,7 @@ export default function ProductsView({
               )}
 
               <div className="">{slice_text(product.name, 25)}</div>
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-muted-foreground">
                 {slice_text(product.description, 90)}
               </div>
 

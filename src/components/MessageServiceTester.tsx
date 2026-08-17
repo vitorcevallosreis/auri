@@ -155,7 +155,7 @@ export function MessageServiceTester() {
       </CardHeader>
       <CardContent className="space-y-4">
         {!selected_chat_windows ? (
-          <div className="p-4 bg-amber-100 text-amber-800 rounded-md">
+          <div className="p-4 bg-amber-100 text-amber-800 rounded-md dark:bg-amber-500/15 dark:text-amber-300">
             Selecione um chat primeiro para testar o envio de mensagens.
           </div>
         ) : (
@@ -208,7 +208,7 @@ export function MessageServiceTester() {
         )}
       </CardContent>
       <CardFooter className="flex justify-between">
-        <p className="text-xs text-gray-500">Esta é uma ferramenta de teste para o novo serviço de mensagens diretas.</p>
+        <p className="text-xs text-muted-foreground">Esta é uma ferramenta de teste para o novo serviço de mensagens diretas.</p>
       </CardFooter>
     </Card>
   );

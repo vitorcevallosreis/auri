@@ -5,6 +5,8 @@ import { Card, CardHeader, CardBody, CardFooter, Button, Spinner, Chip, Modal, M
 import { Phone, Plus, Smartphone, Wifi, WifiOff, MessageSquare, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { formatChannelName } from "@/utils/channelFormat"
+import { WhatsAppIcon } from "@/components/icons/whatsapp"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
 
 export default function DevicesView({
   channels,
@@ -56,23 +58,22 @@ export default function DevicesView({
             </Button>
           </div>
         ) : channels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-12 h-64">
-            <Image
-              alt="WhatsApp"
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/640px-WhatsApp.svg.png"
-              width={80}
-              height={80}
-            />
-            <p className="mt-4 text-gray-600">Nenhum canal vinculado à empresa</p>
-            <Button 
-              color="primary" 
-              className="mt-4"
-              startContent={<Plus size={18} />}
-              onPress={openAddChannelModal}
-            >
-              Adicionar Canal
-            </Button>
-          </div>
+          <Empty className="rounded-xl bg-muted/50">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <WhatsAppIcon />
+              </EmptyMedia>
+              <EmptyTitle>Nenhum canal vinculado</EmptyTitle>
+              <EmptyDescription>
+                Nenhum número de WhatsApp está conectado a esta empresa ainda.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button color="primary" startContent={<Plus size={18} />} onPress={openAddChannelModal}>
+                Adicionar Canal
+              </Button>
+            </EmptyContent>
+          </Empty>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {channels.map((channel) => (
@@ -82,7 +83,7 @@ export default function DevicesView({
                     <Smartphone className="text-primary" />
                     <div>
                       <h3 className="text-lg font-semibold">{formatChannelName(channel.nome)}</h3>
-                      <p className="text-sm text-gray-500">{channel.tipoConexao || "WhatsApp"}</p>
+                      <p className="text-sm text-muted-foreground">{channel.tipoConexao || "WhatsApp"}</p>
                     </div>
                   </div>
                   {renderStatusChip(channel.status)}
@@ -91,18 +92,18 @@ export default function DevicesView({
                   <div className="space-y-2">
                     {channel.numeroTel && (
                       <div className="flex items-center gap-2">
-                        <Phone size={16} className="text-gray-500" />
+                        <Phone size={16} className="text-muted-foreground" />
                         <span>{channel.numeroTel}</span>
                       </div>
                     )}
                     {channel.titular && (
                       <div className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-gray-500" />
+                        <MessageSquare size={16} className="text-muted-foreground" />
                         <span>Titular: {channel.titular}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <Wifi size={16} className="text-gray-500" />
+                      <Wifi size={16} className="text-muted-foreground" />
                       <span>Última atualização: {channel.ultimaAtualizacao || "N/A"}</span>
                     </div>
                   </div>
@@ -129,7 +130,7 @@ export default function DevicesView({
               <ModalHeader className="flex flex-col gap-1">Adicionar Novo Canal</ModalHeader>
               <ModalBody>
                 <p>Funcionalidade em desenvolvimento.</p>
-                <p className="text-sm text-gray-500">Esta funcionalidade será implementada em breve.</p>
+                <p className="text-sm text-muted-foreground">Esta funcionalidade será implementada em breve.</p>
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>

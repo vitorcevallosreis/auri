@@ -6,7 +6,7 @@ import { useContext, useEffect, useState, useCallback } from "react"
 import { useDisclosure } from "@nextui-org/react"
 import { useParams } from "next/navigation"
 import { toast } from "sonner"
-import { supabase, SUPA_TABLES } from "@/lib/supabase/config"
+import { supabase } from "@/lib/supabase/config"
 
 export interface IChannelsModel {
   channel: Channel
@@ -172,20 +172,20 @@ const useChannelsModel = (): IChannelsModel => {
       console.log("Chamando createChannel do contexto com nome:", channelName || "nome automático", "e apiType:", apiType);
       const newChannel = await createChannel(channelName, apiType);
       
-      // Se o canal for null, significa que o webhook retornou sucesso, mas o canal ainda não está disponível no frontend
+      // Null = a rota de instância não devolveu o canal (falha na criação da linha).
       if (!newChannel) {
-        console.log("Canal criado com sucesso no backend, mas ainda não está disponível no frontend");
-        
+        console.log("Canal não retornado pela rota de instância; recarregando lista");
+
         // Atualizar a lista de canais para mostrar os canais existentes
-        await getChannels();
-        
+        setChannels(await getChannels());
+
         return null;
       }
-      
+
       console.log("Canal criado e encontrado com sucesso:", newChannel);
-      
-      // Atualizar a lista de canais
-      await getChannels();
+
+      // Atualizar a lista de canais (a rota já gravou a linha via service role).
+      setChannels(await getChannels());
       console.log("Lista de canais atualizada");
       
       // Definir o canal atual

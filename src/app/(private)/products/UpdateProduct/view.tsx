@@ -49,7 +49,7 @@ export default function UpdateProductView({
                   Editar
                 </ModalHeader>
                 <ModalBody>
-                  <div className="border border-gray-300 shadow-lg p-3 rounded-md grid grid-rows gap-4">
+                  <div className="border border-border shadow-lg p-3 rounded-md grid grid-rows gap-4">
                     {previewUrl && (
                       <div className="mt-4 text-center">
                         <div className="flex justify-center mb-4">

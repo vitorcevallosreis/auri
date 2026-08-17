@@ -198,7 +198,7 @@ function ConveniosSection({
         <Divider className="my-2" />
 
         {convenios.length === 0 ? (
-          <p className="text-gray-500 text-sm">Nenhum convênio adicionado</p>
+          <p className="text-muted-foreground text-sm">Nenhum convênio adicionado</p>
         ) : (
           <div className="space-y-2">
             {convenios.map((item, index) => (
@@ -209,12 +209,12 @@ function ConveniosSection({
                     onValueChange={() => toggleConvenio(index)}
                     size="sm"
                   />
-                  <span className={item.enable ? "" : "text-gray-400"}>
+                  <span className={item.enable ? "" : "text-muted-foreground"}>
                     {item.convenio}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={item.enable ? "" : "text-gray-400"}>
+                  <span className={item.enable ? "" : "text-muted-foreground"}>
                     R$ {item.valor.toFixed(2)}
                   </span>
                   <Button

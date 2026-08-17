@@ -24,14 +24,24 @@ export function StatCard({ title, value, trend, icon }: StatCardProps) {
               <span
                 className={cn(
                   "text-xs font-medium",
-                  trend.isPositive ? "text-green-600" : "text-red-600"
+                  // Dois tons por cor, um por tema. O 600 sozinho reprovava nos
+                  // DOIS: verde-600 dá 3,3:1 sobre o card claro e vermelho-600
+                  // dá 3,19:1 sobre o card escuro. Medido, não estimado.
+                  trend.isPositive
+                    ? "text-green-700 dark:text-green-400"
+                    : "text-red-700 dark:text-red-400"
                 )}
               >
-                {trend.isPositive ? "+" : "-"}
+                {/* O sinal sai do próprio número. Prefixar "+"/"-" a partir de
+                    isPositive duplicava o sinal em valores negativos ("--7%") e
+                    inventava um "+" em cima de um número negativo ("+-5%").
+                    isPositive diz se a variação é BOA (cair o tempo de espera é
+                    bom), não se ela é positiva — por isso só decide a cor. */}
+                {trend.value > 0 ? "+" : ""}
                 {trend.value}%
               </span>
             ) : (
-              <span className="text-xs text-gray-400">Sem variação</span>
+              <span className="text-xs text-muted-foreground">Sem variação</span>
             )}
           </div>
         </div>

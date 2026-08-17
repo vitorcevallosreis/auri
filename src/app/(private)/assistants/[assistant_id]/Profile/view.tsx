@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { User, ShoppingCart } from "lucide-react"
-import { text_ligth, text_regular } from "@/hooks/useFonts"
 import clsx from "clsx"
 import {
   Button,
@@ -125,7 +124,7 @@ export default function ProfileView({
       <div>
         <div className="mb-4">
           <div
-            className={clsx(text_regular.className, "text-lg font-semibold")}
+            className={clsx("font-normal", "text-lg font-semibold")}
           >
             Finalidade
           </div>
@@ -137,13 +136,13 @@ export default function ProfileView({
                 className={`w-full flex items-center gap-3 border ${
                   watch("purpose") === "Suporte"
                     ? "border-blue-500"
-                    : "border-gray-200"
+                    : "border-border"
                 } p-3 rounded-md hover:border-blue-500 cursor-pointer`}
               >
                 <User />
                 <div>
-                  <div className={clsx(text_ligth, "text-md")}>Suporte</div>
-                  <div className={clsx(text_ligth, "text-sm")}>
+                  <div className={clsx("font-light", "text-md")}>Suporte</div>
+                  <div className={clsx("font-light", "text-sm")}>
                     Use essa opção sempre que o objetivo do seu assistente for
                     prestar suporte.
                   </div>
@@ -154,13 +153,13 @@ export default function ProfileView({
                 className={`w-full flex items-center gap-3 border ${
                   watch("purpose") === "Vendas"
                     ? "border-blue-500"
-                    : "border-gray-200"
+                    : "border-border"
                 } p-3 rounded-md hover:border-blue-500 cursor-pointer`}
               >
                 <ShoppingCart />
                 <div>
-                  <div className={clsx(text_ligth, "text-md")}>Vendas</div>
-                  <div className={clsx(text_ligth, "text-sm")}>
+                  <div className={clsx("font-light", "text-md")}>Vendas</div>
+                  <div className={clsx("font-light", "text-sm")}>
                     Use sempre que quiser criar um assistente que tem como foco
                     falar de um produto.
                   </div>
@@ -193,7 +192,7 @@ export default function ProfileView({
                 {propmts.map((prompt, index: number) => (
                   <div
                     key={index}
-                    className="flex flex-col gap-2 shadow-md p-2 border border-gray-300 rounded-md"
+                    className="flex flex-col gap-2 shadow-md p-2 border border-border rounded-md"
                   >
                     <div>
                       <Button
@@ -242,7 +241,7 @@ export default function ProfileView({
             </div>
           )}
 
-          <div className="text-right mt-1 text-gray-400">
+          <div className="text-right mt-1 text-muted-foreground">
             {assistant?.description?.length} / 500
           </div>
         </div>

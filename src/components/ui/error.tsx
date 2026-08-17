@@ -20,7 +20,7 @@ export function Error({
   const baseStyles = "rounded-lg p-4 text-sm flex items-start gap-3"
   const variantStyles = variant === "error" 
     ? "bg-destructive/10 text-destructive" 
-    : "bg-yellow-50 text-yellow-700"
+    : "bg-yellow-50 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-300"
 
   return (
     <div className={cn(baseStyles, variantStyles, className)}>
