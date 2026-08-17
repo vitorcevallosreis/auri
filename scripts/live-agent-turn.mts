@@ -16,8 +16,12 @@
  *
  * Usa a empresa e o assistente REAIS da Clínica A, porque o valor do teste
  * está justamente nas ferramentas acharem serviço, profissional e agenda de
- * verdade. Só o contato e o chat são descartáveis, com prefixo `feed0000`, e
- * são apagados no fim mesmo se der erro.
+ * verdade. Só o contato e o chat são descartáveis, com prefixo `feed`, e são
+ * apagados no fim mesmo se der erro.
+ *
+ * ⚠️ Consulta MARCADA não é apagada pela limpeza — `agendar_consulta` grava em
+ * `myia_appointments`, que não tem o prefixo. Depois de um teste que chegou a
+ * marcar, apague o agendamento à mão, ou ele aparece na agenda do painel.
  */
 
 import { readFileSync, existsSync } from "node:fs"
