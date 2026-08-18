@@ -188,6 +188,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   async function signIn({ email, password }: SignInData): Promise<any> {
+    // Ligada logo antes de sair da página. O `finally` abaixo NÃO pode devolver
+    // o botão para "Entrar" durante a navegação: o documento novo leva um
+    // instante para pintar, e nesse intervalo a tela de login voltaria a
+    // parecer ociosa — exatamente a impressão de "não aconteceu nada" que o
+    // bug antigo dava.
+    let redirecionando = false
+
     try {
       setIsLoading(true)
 
@@ -247,7 +254,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       set_user(authData) // Atualizar o usuário no estado local também
       
-      // Carregar dados da empresa diretamente após o login
+      // Carregar dados da empresa diretamente após o login.
+      //
+      // ⚠️ Desde que o redirecionamento virou navegação de documento (abaixo),
+      // este aquecimento não sobrevive à troca de página: o QueryClient é
+      // criado no layout raiz e não é persistido, então o cache morre junto
+      // com o contexto antigo. Ficou aqui porque não custa nada e volta a
+      // valer se o destino um dia voltar a ser navegação de cliente — mas
+      // quem for otimizar o tempo de abertura do painel precisa saber que
+      // hoje ele NÃO ajuda.
       if (authData.company_id) {
         // Pré-carregar os dados básicos da empresa no cache do React Query
         queryClient.prefetchQuery({
@@ -289,7 +304,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // ("Piloto Automático" no menu); "/pro" é a área do médico, com sidebar
       // própria de três itens. NÃO usar "/dashboard": aquela rota é uma página
       // legada órfã, fora do DashboardLayout e com dados fictícios.
-      router.push(role === "professional" ? "/pro" : "/")
+      const destino = role === "professional" ? "/pro" : "/"
+
+      // NAVEGAÇÃO DE DOCUMENTO, e não `router.push`. Isto conserta o sintoma
+      // reincidente de "entrei e continuei na tela de login; só sai com F5".
+      //
+      // `router.push` é navegação de CLIENTE: continua na mesma página, no
+      // mesmo contexto de JavaScript, e por isso pode ser desfeita por
+      // qualquer coisa que ainda esteja rodando ali — o eco de SIGNED_OUT da
+      // sessão anterior (ver o handler acima), uma entrada de rota já em
+      // cache, ou uma transição do React que fica pendente e segura a URL.
+      // Cada uma dessas causas foi consertada em separado e o sintoma voltou,
+      // porque bastava UMA delas para reaparecer.
+      //
+      // A troca ataca a classe inteira em vez de mais uma causa: ao trocar o
+      // documento, o contexto antigo deixa de existir e nada que ele tenha
+      // agendado pode mais atropelar o destino. O middleware roda de novo no
+      // servidor, agora enxergando o cookie recém-gravado, e leva cada papel
+      // para a sua área. É, literalmente, o F5 que a pessoa dava na mão.
+      //
+      // `replace` e não `assign`: a tela de login não é um passo do histórico
+      // para o qual faça sentido voltar — o "voltar" do navegador cairia em
+      // /login, que o middleware devolve para cá.
+      //
+      // Custa um carregamento inteiro, uma vez por login. Em troca, a
+      // identidade nova estreia com a árvore do React limpa e o cache do React
+      // Query vazio — num produto clínico, nenhum resquício do usuário
+      // anterior atravessa a fronteira.
+      if (typeof window !== "undefined") {
+        redirecionando = true
+        window.location.replace(destino)
+      } else {
+        router.push(destino)
+      }
     } catch (error) {
       // Sem log o erro real fica invisível: credencial errada, linha ausente em
       // myia_users e falha de RLS viravam todos o mesmo toast genérico, sem
@@ -305,7 +352,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         closeButton: true,
       })
     } finally {
-      setIsLoading(false)
+      if (!redirecionando) setIsLoading(false)
     }
   }
 

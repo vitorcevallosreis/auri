@@ -29,7 +29,14 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
       {/* Formulário */}
       <div className="flex w-full flex-col justify-center px-6 py-12 lg:w-1/2 lg:px-16">
         <div className="mx-auto w-full max-w-sm">
-          <Link href="/" className="inline-block">
+          {/* `prefetch={false}`: deslogado, "/" responde 307 para /login. Com o
+              prefetch ligado o Next busca esse destino assim que o logo entra
+              na tela e guarda o resultado — uma entrada de cache que aponta de
+              volta para o login, com validade de 5 minutos (o "/" compila como
+              rota estática, `x-nextjs-stale-time: 300`), justamente no minuto
+              em que a pessoa digita a senha. O link continua funcionando; só
+              não é mais buscado antes da hora. */}
+          <Link href="/" prefetch={false} className="inline-block">
             <AuriLogo className="h-9 text-foreground" />
           </Link>
 
