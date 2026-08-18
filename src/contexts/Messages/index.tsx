@@ -271,7 +271,7 @@ export function MessagesProvider({ children }: MessagesProps) {
 
     try {
       // 1) Presign para imagem
-      const presignRes = await fetch('/api/upload/image/presign', {
+      const presignRes = await authedFetch('/api/upload/image/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id, contentType: image.type, ext: image.name.split('.').pop() || 'jpg' })
@@ -316,7 +316,7 @@ export function MessagesProvider({ children }: MessagesProps) {
 
     try {
       // 1) Presign para documento
-      const presignRes = await fetch('/api/upload/document/presign', {
+      const presignRes = await authedFetch('/api/upload/document/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id, contentType: document.type, ext: document.name.split('.').pop() || 'pdf' })

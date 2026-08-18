@@ -27,6 +27,16 @@ export async function getAuthedCompanyId(req: Request): Promise<string | null> {
   return userRow.company_id as string
 }
 
+/** company_id dono de um chat (via myia_chat); null se não existir. */
+export async function chatCompanyId(chatId: string): Promise<string | null> {
+  const { data } = await supabaseServer
+    .from("myia_chat")
+    .select("company_id")
+    .eq("id", chatId)
+    .maybeSingle()
+  return (data?.company_id as string) ?? null
+}
+
 /** company_id dono de um assistant (via myia_assistants); null se não existir. */
 export async function assistantCompanyId(assistantId: string): Promise<string | null> {
   const { data } = await supabaseServer

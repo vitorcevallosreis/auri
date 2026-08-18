@@ -334,7 +334,7 @@ const useChatSendMessageModel = (): IChatSendMessageModel => {
       }
 
       // 1) Presign
-      const presignRes = await fetch(endpoint, {
+      const presignRes = await authedFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -412,7 +412,7 @@ const useChatSendMessageModel = (): IChatSendMessageModel => {
 
       try {
         // 1) Solicitar URL pré-assinada para upload no MinIO
-        const presignRes = await fetch('/api/upload/audio/presign', {
+        const presignRes = await authedFetch('/api/upload/audio/presign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

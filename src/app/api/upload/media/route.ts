@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import { getAuthedCompanyId } from '@/lib/auth/tenant';
 
-// Configurações do Minio
-const MINIO_SERVER = process.env.NEXT_PUBLIC_MINIO_SERVER_URL || 'https://s3.techtopus.dev';
-const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER || 'Techtoplus';
-const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD || 'U2f97A_TechMIN_5f48wS';
+/**
+ * AUTENTICAÇÃO E CREDENCIAIS.
+ *
+ * Esta rota respondia a QUALQUER pessoa na internet e gravava no bucket. Pior
+ * que as irmãs `presign`: elas ficam inertes sem `MINIO_*` no ambiente, e esta
+ * não ficava — trazia usuário e SENHA do MinIO escritos no código como valor
+ * padrão, então funcionava sem configuração nenhuma. Um POST anônimo subia
+ * arquivo para o object storage do fornecedor antigo.
+ *
+ * Os padrões foram removidos: sem `MINIO_*` no ambiente a rota agora falha
+ * fechada (500), em vez de silenciosamente usar uma credencial de terceiro.
+ * A identidade vem do JWT do Supabase em `Authorization: Bearer`, e o objeto
+ * é gravado dentro da pasta da empresa do chamador.
+ */
+const MINIO_SERVER = process.env.MINIO_SERVER_URL || process.env.NEXT_PUBLIC_MINIO_SERVER_URL;
+const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER || process.env.MINIO_ACCESS_KEY;
+const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD || process.env.MINIO_SECRET_KEY;
 
 /**
  * API para upload de mídia (imagens e documentos) para o Minio S3
@@ -14,6 +28,16 @@ export async function POST(request: NextRequest) {
   console.log('API de upload de mídia iniciada');
   
   try {
+    const callerCompanyId = await getAuthedCompanyId(request);
+    if (!callerCompanyId) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+
+    if (!MINIO_SERVER || !MINIO_ROOT_USER || !MINIO_ROOT_PASSWORD) {
+      console.error('[upload/media] MINIO_* ausente — recusando em vez de usar credencial embutida');
+      return NextResponse.json({ error: 'MinIO environment not configured' }, { status: 500 });
+    }
+
     // Verificar se o request é multipart/form-data
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -101,7 +125,9 @@ export async function POST(request: NextRequest) {
     
     // Gerar nome único para o arquivo
     const fileExtension = file.name.split('.').pop() || '';
-    const uniqueFileName = `${uuidv4()}.${fileExtension}`;
+    // Prefixo por empresa: sem ele os arquivos de todas as clínicas caem no
+    // mesmo nível do bucket.
+    const uniqueFileName = `company/${callerCompanyId}/${uuidv4()}.${fileExtension}`;
     console.log('Nome único gerado para o arquivo:', uniqueFileName);
     
     // Converter o arquivo para buffer

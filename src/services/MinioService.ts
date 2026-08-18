@@ -1,3 +1,5 @@
+import { authedFetch } from "@/lib/api/authedFetch";
+
 /**
  * Serviço para interação com o Minio S3
  */
@@ -91,7 +93,7 @@ export class MinioService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.UPLOAD_TIMEOUT);
         
-        const response = await fetch('/api/upload/audio', {
+        const response = await authedFetch('/api/upload/audio', {
           method: 'POST',
           body: formData,
           signal: controller.signal
@@ -168,7 +170,7 @@ export class MinioService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.UPLOAD_TIMEOUT);
         
-        const response = await fetch('/api/upload/media', {
+        const response = await authedFetch('/api/upload/media', {
           method: 'POST',
           body: formData,
           signal: controller.signal
@@ -245,7 +247,7 @@ export class MinioService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.UPLOAD_TIMEOUT);
         
-        const response = await fetch('/api/upload/media', {
+        const response = await authedFetch('/api/upload/media', {
           method: 'POST',
           body: formData,
           signal: controller.signal
